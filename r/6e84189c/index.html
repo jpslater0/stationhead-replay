@@ -165,23 +165,6 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 .hud b{color:#fff;font-variant-numeric:tabular-nums;font-size:15px}
 .hud .t{color:#fff;font-weight:600}
 
-/* ---------- library ---------- */
-.lib{height:100vh;overflow-y:auto;padding:52px 24px 60px;max-width:920px;margin:0 auto}
-.lib h1{font-size:26px;font-weight:700;letter-spacing:-.4px}
-.lib>p{color:#8c8189;font-size:14px;margin-top:6px;line-height:1.55}
-.lib code{background:#1c181d;padding:2px 6px;border-radius:4px;font-size:13px;color:#d9ccd4}
-.grid{display:grid;gap:12px;margin-top:26px}
-.card{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:13px;
- background:#171419;text-decoration:none;color:#fff;border:1px solid #221d23}
-.card:hover{border-color:#3a323c;background:#1c181e}
-.swatch{width:40px;height:40px;border-radius:10px;flex:0 0 auto}
-.card .t{flex:1;min-width:0}
-.card .t b{display:block;font-size:15px;font-weight:700}
-.card .t span{display:block;font-size:13px;color:#8c8189;margin-top:2px}
-.card .s{text-align:right;font-size:13px;color:#8c8189;flex:0 0 auto;line-height:1.4}
-.card .s b{display:block;color:#fff;font-size:15px;font-variant-numeric:tabular-nums}
-.all{display:inline-block;margin-top:22px;padding:12px 20px;border-radius:11px;background:#fff;
- color:#191016;font-weight:700;font-size:14px;text-decoration:none}
 </style></head><body>
 
 <div id="root"></div>
@@ -224,25 +207,7 @@ function wanted(){
   let s=q.getAll('s').flatMap(v=>v.split(','));
   return s.map(v=>v.trim()).filter(v=>/^\d+:\d+:\d+$/.test(v));
 }
-const DWELL=3600;   // how long an intro card holds before the clip starts
-
-/* ---------- library ---------- */
-async function library(){
-  const idx=await (await fetch('moments/index.json')).json();
-  const all=idx.map(m=>'s='+m.id).join('&');
-  document.getElementById('root').innerHTML=`<div class="lib">
-   <h1>Replay a moment</h1>
-   <p>Each of these rebuilds three minutes of a real listening party &mdash; the chat that was
-   actually sent, at the speed it was sent, over the show&rsquo;s own voice recording.
-   Add <code>?s=show:startMs:durationMs</code> to the URL, or stack several with
-   <code>&amp;s=</code> to swipe through them.</p>
-   <div class="grid">${idx.map(m=>`<a class="card" href="?s=${m.id}">
-     <span class="swatch" style="background:${m.accent}"></span>
-     <span class="t"><b>${esc(m.title)}</b><span>${esc(m.sub)} &middot; ${m.channel} &middot; ${m.date}</span></span>
-     <span class="s"><b>${m.peak}/sec</b>${num(m.msgCount)} messages</span></a>`).join('')}</div>
-   <a class="all" href="?${all}">Play all ${idx.length} as a feed &rarr;</a>
-  </div>`;
-}
+const DWELL=2900;   // how long an intro card holds before the clip starts
 
 /* ---------- one slide ---------- */
 class Slide{
@@ -319,7 +284,7 @@ class Slide{
           <div><b>${d.peak}/sec</b><span>peak</span></div>
         </div>
         <div class="go"><div class="pb">&#9654;</div>
-          <em data-hint>${d.date} &middot; 3 minutes, at the speed it happened</em></div>
+          <em data-hint>${d.date} &middot; 45 seconds, at the speed it happened</em></div>
         <i class="dwell" data-dwell></i>
       </div>
     </div></div>`;
@@ -476,7 +441,6 @@ const App={
   slides:[],cur:0,
   async start(){
     let ids=wanted();
-    if(new URLSearchParams(location.search).has('list')) return library();
     if(!ids.length){
       const idx=await (await fetch('moments/index.json')).json();
       ids=idx.map(m=>m.id);                 // the whole reel, in curated order
