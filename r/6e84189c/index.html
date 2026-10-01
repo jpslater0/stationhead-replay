@@ -359,7 +359,11 @@ class Slide{
   tick(){
     const d=this.d, el=this.now()-d.start/1000;
     if(el<0){this.seek(d.start/1000);return;}
-    if(el>d.dur/1000){this.pause();App.ended(this);return;}
+    if(el>d.dur/1000){
+      this.pause();
+      if(App.slides[App.cur]===this) App.ended(this);
+      return;
+    }
     const ms=el*1000; let i=0;
     while(i<d.msgs.length&&d.msgs[i][0]<=ms)i++;
     if(i!==this.shown){this.shown=i;this.draw(i);}
@@ -401,7 +405,10 @@ class Slide{
     }
     if(hint&&!App.unlocked) hint.textContent='Tap to start the reel';
     clearTimeout(this.dw);
-    this.dw=setTimeout(()=>{ this.gate.style.display='none'; this.play(); }, ms);
+    this.dw=setTimeout(()=>{
+      if(App.slides[App.cur]!==this) return;      // scrolled away while the card held
+      this.gate.style.display='none'; this.play();
+    }, ms);
   }
   reset(){
     clearTimeout(this.dw); this.started=false;
@@ -415,6 +422,8 @@ class Slide{
 
   play(){
     if(!this.d)return;
+    if(App.slides[App.cur]!==this) return;        // never play off-screen
+    App.silenceOthers(this);                      // only one clip is ever audible
     const s=this.d.start/1000;
     if(this.now()<s||this.now()>s+this.d.dur/1000)this.seek(s);
     if(this.audio){
@@ -488,6 +497,15 @@ const App={
     if(c&&this.slides.length>1)c.textContent=`${this.cur+1} of ${this.slides.length}`;
   },
   unlock(){ this.unlocked=true; },
+  silenceOthers(keep){
+    for(const s of this.slides){
+      if(s===keep||!s.audio)continue;
+      s.audio.pause();
+      s.playing=false;
+      clearTimeout(s.dw);
+      clearInterval(s.timer);
+    }
+  },
   toggle(){
     const s=this.slides[this.cur]; if(!s||!s.d)return;
     if(!s.started){this.unlock();s.begin(0);return;}
