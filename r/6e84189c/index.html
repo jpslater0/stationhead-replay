@@ -148,6 +148,9 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 .gate .pb{width:60px;height:60px;border-radius:50%;background:#fff;color:#191016;display:grid;
  place-items:center;font-size:23px;padding-left:4px;flex:0 0 auto}
 .gate .go em{font-style:normal;font-size:14px;opacity:.85}
+.gate .dwell{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.2);
+ transform-origin:left;transform:scaleX(0);z-index:3}
+.gate .dwell.run{transform:scaleX(1);transition:transform linear}
 
 /* ---------- rail ---------- */
 .rail{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:20;
@@ -221,6 +224,7 @@ function wanted(){
   let s=q.getAll('s').flatMap(v=>v.split(','));
   return s.map(v=>v.trim()).filter(v=>/^\d+:\d+:\d+$/.test(v));
 }
+const DWELL=3600;   // how long an intro card holds before the clip starts
 
 /* ---------- library ---------- */
 async function library(){
@@ -315,7 +319,8 @@ class Slide{
           <div><b>${d.peak}/sec</b><span>peak</span></div>
         </div>
         <div class="go"><div class="pb">&#9654;</div>
-          <em>${d.date} &middot; 3 minutes, at the speed it happened</em></div>
+          <em data-hint>${d.date} &middot; 3 minutes, at the speed it happened</em></div>
+        <i class="dwell" data-dwell></i>
       </div>
     </div></div>`;
 
@@ -325,7 +330,7 @@ class Slide{
     this.cnt=this.el.querySelector('[data-cnt]');
     this.heartsEl=this.el.querySelector('[data-hearts]');
     this.gate=this.el.querySelector('[data-gate]');
-    this.gate.addEventListener('click',()=>App.toggle());
+    this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
     this.at=d.start/1000;                 // playhead, in show seconds
     if(d.audio){
       this.audio=new Audio(d.audio);
@@ -419,6 +424,30 @@ class Slide{
 
   seek(t){ if(this.audio)this.audio.currentTime=t; else this.at=t; }
 
+  /* hold the intro card, then roll. ms=0 starts immediately. */
+  begin(ms){
+    if(!this.d||this.started)return;
+    this.started=true;
+    const bar=this.gate.querySelector('[data-dwell]');
+    const hint=this.gate.querySelector('[data-hint]');
+    if(ms>0&&bar){
+      bar.style.transitionDuration=ms+'ms';
+      requestAnimationFrame(()=>bar.classList.add('run'));
+    }
+    if(hint&&!App.unlocked) hint.textContent='Tap to start the reel';
+    clearTimeout(this.dw);
+    this.dw=setTimeout(()=>{ this.gate.style.display='none'; this.play(); }, ms);
+  }
+  reset(){
+    clearTimeout(this.dw); this.started=false;
+    if(!this.gate)return;
+    this.gate.style.display='';
+    const bar=this.gate.querySelector('[data-dwell]');
+    if(bar){bar.classList.remove('run');bar.style.transitionDuration='0ms';}
+    this.pause(); this.seek(this.d.start/1000); this.shown=-1; this.mic=null;
+    if(this.box)this.draw(0);
+  }
+
   play(){
     if(!this.d)return;
     const s=this.d.start/1000;
@@ -446,8 +475,12 @@ class Slide{
 const App={
   slides:[],cur:0,
   async start(){
-    const ids=wanted();
-    if(!ids.length){ if(location.search){ return library(); } return library(); }
+    let ids=wanted();
+    if(new URLSearchParams(location.search).has('list')) return library();
+    if(!ids.length){
+      const idx=await (await fetch('moments/index.json')).json();
+      ids=idx.map(m=>m.id);                 // the whole reel, in curated order
+    }
     document.getElementById('root').innerHTML=
       `<div id="feed">${ids.map(()=>'<div class="slide"></div>').join('')}</div>
        ${ids.length>1?`<div class="rail">${ids.map((_,i)=>`<i data-i="${i}"></i>`).join('')}</div>`:''}
@@ -463,7 +496,13 @@ const App={
       es.forEach(e=>{
         if(e.intersectionRatio>.6){
           const i=this.slides.findIndex(s=>s.el===e.target);
-          if(i>=0&&i!==this.cur){this.slides[this.cur]&&this.slides[this.cur].pause();this.cur=i;this.mark();}
+          if(i>=0&&i!==this.cur){
+            const prev=this.slides[this.cur];
+            if(prev)prev.reset();
+            this.cur=i; this.mark();
+            const s=this.slides[i];
+            if(s&&this.unlocked) s.begin(DWELL);   // card holds, then rolls
+          }
         }
       });
     },{threshold:[.6]});
@@ -484,13 +523,16 @@ const App={
     const c=document.getElementById('hudc');
     if(c&&this.slides.length>1)c.textContent=`${this.cur+1} of ${this.slides.length}`;
   },
+  unlock(){ this.unlocked=true; },
   toggle(){
     const s=this.slides[this.cur]; if(!s||!s.d)return;
+    if(!s.started){this.unlock();s.begin(0);return;}
     if(s.paused)s.play(); else s.pause();
   },
   ended(s){
     const i=this.slides.indexOf(s);
-    if(this.slides[i+1])this.slides[i+1].el.scrollIntoView();
+    const next=this.slides[i+1]||this.slides[0];     // loop the reel
+    if(next)next.el.scrollIntoView();
   },
   hud(rate,el,d){
     const r=document.getElementById('hudr'),t=document.getElementById('hudt'),f=document.getElementById('mfill');
