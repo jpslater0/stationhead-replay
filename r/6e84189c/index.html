@@ -130,14 +130,24 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 @keyframes fly{0%{transform:translateY(0) scale(.7);opacity:0}12%{opacity:1}
  100%{transform:translateY(-270px) scale(1.1);opacity:0}}
 
-.gate{position:absolute;inset:0;z-index:9;background:rgba(15,8,12,.55);backdrop-filter:blur(3px);
- display:grid;place-items:center;cursor:pointer;color:#fff}
-.gate div{text-align:center;padding:0 30px}
-.gate .pb{width:82px;height:82px;border-radius:50%;background:#fff;color:#191016;display:grid;
- place-items:center;font-size:30px;margin:0 auto 16px;padding-left:5px}
-.gate h2{font-size:19px;font-weight:700;letter-spacing:-.3px}
-.gate p{font-size:15px;margin-top:3px;opacity:.9}
-.gate small{display:block;font-size:13px;opacity:.65;margin-top:8px}
+.gate{position:absolute;inset:0;z-index:9;cursor:pointer;color:#fff;overflow:hidden;
+ background:var(--bg);display:flex;flex-direction:column;justify-content:flex-end;padding:34px 28px 38px}
+.gate::before{content:'';position:absolute;left:50%;top:26%;transform:translate(-50%,-50%);
+ width:620px;height:620px;border-radius:50%;background:var(--ring1);opacity:.5}
+.gate::after{content:'';position:absolute;inset:0;
+ background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.42) 52%,rgba(0,0,0,.78) 100%)}
+.gate>*{position:relative;z-index:2}
+.gate .nm{font-size:54px;line-height:.95;font-weight:800;letter-spacing:-2px;color:#fff;
+ text-shadow:0 2px 24px rgba(0,0,0,.45);word-break:break-word}
+.gate .ttl{font-size:16px;font-weight:600;margin-top:12px;color:#fff;opacity:.95}
+.gate .ctx{font-size:15px;line-height:1.45;margin-top:10px;color:rgba(255,255,255,.88);max-width:34ch}
+.gate .fx{display:flex;gap:18px;margin-top:18px;flex-wrap:wrap}
+.gate .fx b{display:block;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.gate .fx span{font-size:11px;letter-spacing:.7px;text-transform:uppercase;opacity:.7}
+.gate .go{display:flex;align-items:center;gap:12px;margin-top:24px}
+.gate .pb{width:60px;height:60px;border-radius:50%;background:#fff;color:#191016;display:grid;
+ place-items:center;font-size:23px;padding-left:4px;flex:0 0 auto}
+.gate .go em{font-style:normal;font-size:14px;opacity:.85}
 
 /* ---------- rail ---------- */
 .rail{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:20;
@@ -294,14 +304,19 @@ class Slide{
           <div class="cb">&#43;</div><div class="cb">&#128717;</div><div class="cb">&#128156;</div>
         </div>
       </div>
-      <div class="gate" data-gate><div>
-        <div class="pb">&#9654;</div>
-        <h2>${esc(d.title)}</h2>
-        <p>${esc(d.sub)}</p>
-        <small>${d.date} &middot; from ${fmt(d.start/1000)} &middot; ${num(d.msgCount)} messages from ${num(d.userCount)} people &middot; peak ${d.peak}/sec${d.audio?'':'<br>'+(d.silent==='no-recording'
-       ? 'No voice recording survives for this show &mdash; chat only'
-       : 'Nobody spoke during this stretch &mdash; chat only')}</small>
-      </div></div>
+      <div class="gate" data-gate>
+        <div class="nm">${esc(d.title)}</div>
+        ${d.showTitle?`<div class="ttl">&ldquo;${esc(d.showTitle)}&rdquo;</div>`:''}
+        ${d.context?`<div class="ctx">${esc(d.context)}</div>`:''}
+        <div class="fx">
+          <div><b>${num(d.listens)}</b><span>in the show</span></div>
+          <div><b>${num(d.msgCount)}</b><span>messages</span></div>
+          <div><b>${num(d.userCount)}</b><span>people</span></div>
+          <div><b>${d.peak}/sec</b><span>peak</span></div>
+        </div>
+        <div class="go"><div class="pb">&#9654;</div>
+          <em>${d.date} &middot; 3 minutes, at the speed it happened</em></div>
+      </div>
     </div></div>`;
 
     this.fit=this.el.querySelector('.fit');
