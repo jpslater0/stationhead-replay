@@ -39,6 +39,16 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 .logo{height:96px;margin-top:34px;display:grid;place-items:center;padding:0 46px}
 .logo img{max-width:100%;max-height:100%;object-fit:contain}
 .wordmark{font-size:38px;font-weight:800;letter-spacing:-1px;text-align:center;line-height:1.05}
+/* voice note: no show behind it, so the card is the whole screen */
+.note{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+ justify-content:center;gap:18px;padding:40px 30px;text-align:center}
+.note .lg{max-width:62%;max-height:130px;object-fit:contain}
+.note .wm{font-size:40px;font-weight:800;letter-spacing:-1.2px}
+.note .who{font-size:13px;letter-spacing:1.2px;text-transform:uppercase;opacity:.7}
+.note .bar{width:100%;max-width:330px;height:62px;border-radius:31px;background:var(--o65);
+ display:flex;align-items:center;gap:10px;padding:0 10px;color:#241419;margin-top:4px}
+.note .bar .av{width:44px;height:44px;border-radius:50%;background:rgba(36,20,25,.15);flex:0 0 auto}
+.note .nt{font-size:14px;opacity:.85}
 .hostwrap{display:grid;place-items:center;margin-top:46px}
 .hostav{position:relative;width:72px;height:72px}
 .av{border-radius:50%;background:#2d142c;display:block;overflow:hidden;object-fit:cover}
@@ -205,7 +215,7 @@ const num=n=>n.toLocaleString('en-US');
 function wanted(){
   const q=new URLSearchParams(location.search);
   let s=q.getAll('s').flatMap(v=>v.split(','));
-  return s.map(v=>v.trim()).filter(v=>/^\d+:\d+:\d+$/.test(v));
+  return s.map(v=>v.trim()).filter(v=>/^\d+:\d+:\d+$/.test(v)||/^note:\d+$/.test(v));
 }
 const DWELL=2900;   // how long an intro card holds before the clip starts
 
@@ -215,8 +225,10 @@ class Slide{
 
   async load(){
     if(this.loaded)return; this.loaded=true;
-    const [show,start,dur]=this.id.split(':');
-    const r=await fetch(`moments/${show}_${start}_${dur}.json`);
+    const p=this.id.split(':');
+    const file = p[0]==='note' ? `moments/note_${p[1]}.json`
+                               : `moments/${p[0]}_${p[1]}_${p[2]}.json`;
+    const r=await fetch(file);
     if(!r.ok){this.el.innerHTML=`<div style="color:#8c8189;font-size:14px;text-align:center">
       No baked moment for <b style="color:#fff">${esc(this.id)}</b><br>
       <span style="font-size:13px">Moments have to be built from the warehouse first.</span></div>`;return;}
@@ -226,6 +238,7 @@ class Slide{
 
   render(){
     const d=this.d, t=theme(d.channel.accent);
+    if(d.kind==='note') return this.renderNote(t);
     const vars=Object.entries(t).map(([k,v])=>`--${k}:${v}`).join(';');
     this.el.innerHTML=`<div class="fit"><div class="ph" style="${vars}">
       <div class="rings"></div>
@@ -304,9 +317,63 @@ class Slide{
         if(this.audio.currentTime<d.start/1000)this.audio.currentTime=d.start/1000;
       });
       this.audio.addEventListener('timeupdate',()=>this.tick());
+      this.audio.addEventListener('ended',()=>{
+        this.playing=false;
+        if(App.slides[App.cur]===this) App.ended(this);
+      });
     }
     this.scale();
     this.draw(0);
+  }
+
+  /* a voice note has no station screen to rebuild — show the note itself */
+  renderNote(t){
+    const d=this.d;
+    const vars=Object.entries(t).map(([k,v])=>`--${k}:${v}`).join(';');
+    this.el.innerHTML=`<div class="fit"><div class="ph" style="${vars}">
+      <div class="rings"></div>
+      <div class="note">
+        ${d.channel.logo?`<img class="lg" src="${d.channel.logo}" alt="${esc(d.channel.name)}">`
+                        :`<div class="wm">${esc(d.channel.name)}</div>`}
+        <div class="who">${esc(d.channel.tag)} &middot; ${num(d.channel.members)} members</div>
+        <div class="wm">${esc(d.title)}</div>
+        <div class="bar"><div class="av"></div><div class="wave" data-wv></div>
+          <div class="vtime" data-vt>0:00</div></div>
+        <div class="nt">voice note &ldquo;${esc(d.noteTitle)}&rdquo; &middot; ${d.date}</div>
+      </div>
+      <div class="gate" data-gate>
+        <div class="nm">${esc(d.title)}</div>
+        <div class="ttl">sent a voice note to ${esc(d.channel.name)}</div>
+        <div class="ctx">${esc(d.context)}</div>
+        <div class="fx">
+          <div><b>${num(d.channel.members)}</b><span>channel members</span></div>
+          <div><b>${(d.dur/1000).toFixed(0)}s</b><span>note</span></div>
+        </div>
+        <div class="go"><div class="pb">&#9654;</div>
+          <em data-hint>${d.date} &middot; straight from the artist</em></div>
+        <i class="dwell" data-dwell></i>
+      </div>
+    </div></div>`;
+    this.fit=this.el.querySelector('.fit');
+    this.nowEl=this.el.querySelector('.bar');
+    this.gate=this.el.querySelector('[data-gate]');
+    this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
+    this.audio=new Audio(d.audio); this.audio.preload='auto';
+    this.audio.addEventListener('timeupdate',()=>this.tickNote());
+    this.audio.addEventListener('ended',()=>{
+      this.playing=false;
+      if(App.slides[App.cur]===this) App.ended(this);
+    });
+    this.at=0; this.mic=true;
+    this.scale();
+  }
+  tickNote(){
+    const d=this.d, el=this.audio.currentTime;
+    if(el>d.dur/1000){ this.pause(); if(App.slides[App.cur]===this) App.ended(this); return; }
+    const wv=this.nowEl.querySelector('[data-wv]'), vt=this.nowEl.querySelector('[data-vt]');
+    if(wv) wv.innerHTML=this.wave(el/(d.dur/1000));
+    if(vt) vt.textContent=fmt(el);
+    if(App.slides[App.cur]===this) App.hud(0,el,d);
   }
 
   scale(){
@@ -343,7 +410,7 @@ class Slide{
   }
 
   draw(upto){
-    const d=this.d, h=[];
+    const d=this.d; if(d.kind==='note')return; const h=[];
     for(let i=Math.max(0,upto-9);i<upto;i++){
       const u=d.users[d.msgs[i][1]];
       const av=u[1]?`<img class="av ov" loading="lazy" src="${AVB}${u[1]}" onerror="this.style.display='none'">`:'';
@@ -357,7 +424,8 @@ class Slide{
   now(){ return this.audio ? this.audio.currentTime : this.at; }
 
   tick(){
-    const d=this.d, el=this.now()-d.start/1000;
+    const d=this.d; if(d.kind==='note')return;
+    const el=this.now()-d.start/1000;
     if(el<0){this.seek(d.start/1000);return;}
     if(el>d.dur/1000){
       this.pause();
@@ -416,7 +484,8 @@ class Slide{
     this.gate.style.display='';
     const bar=this.gate.querySelector('[data-dwell]');
     if(bar){bar.classList.remove('run');bar.style.transitionDuration='0ms';}
-    this.pause(); this.seek(this.d.start/1000); this.shown=-1; this.mic=null;
+    this.pause(); this.seek(this.d.start/1000); this.shown=-1;
+    if(this.d.kind!=='note') this.mic=null;
     if(this.box)this.draw(0);
   }
 
@@ -459,7 +528,7 @@ const App={
        ${ids.length>1?`<div class="rail">${ids.map((_,i)=>`<i data-i="${i}"></i>`).join('')}</div>`:''}
        <div class="meter"><i id="mfill"></i></div>
        <div class="hud"><span class="t" id="hudt">&nbsp;</span>
-         <span><b id="hudr">0</b> msgs/sec</span><span id="hudc"></span></div>`;
+         <span id="hudrw"><b id="hudr">0</b> msgs/sec</span><span id="hudc"></span></div>`;
     const feed=document.getElementById('feed');
     this.slides=[...feed.children].map((el,i)=>new Slide(ids[i],el));
     await this.slides[0].load();
@@ -483,12 +552,12 @@ const App={
     this.mark();
 
     document.querySelectorAll('.rail i').forEach(d=>d.addEventListener('click',()=>
-      this.slides[+d.dataset.i].el.scrollIntoView()));
+      this.goTo(+d.dataset.i)));
     addEventListener('resize',()=>this.slides.forEach(s=>s.scale()));
     addEventListener('keydown',e=>{
       if(e.code==='Space'){e.preventDefault();this.toggle();}
-      if(e.code==='ArrowDown'&&this.slides[this.cur+1])this.slides[this.cur+1].el.scrollIntoView();
-      if(e.code==='ArrowUp'&&this.slides[this.cur-1])this.slides[this.cur-1].el.scrollIntoView();
+      if(e.code==='ArrowDown')this.goTo(this.cur+1);
+      if(e.code==='ArrowUp')this.goTo(this.cur-1);
     });
   },
   mark(){
@@ -497,6 +566,13 @@ const App={
     if(c&&this.slides.length>1)c.textContent=`${this.cur+1} of ${this.slides.length}`;
   },
   unlock(){ this.unlocked=true; },
+  /* scrollIntoView is unreliable inside a snap container; drive scrollTop directly */
+  goTo(i){
+    if(i<0||i>=this.slides.length)return;
+    const feed=document.getElementById('feed');
+    if(!feed)return;
+    feed.scrollTo({top:i*feed.clientHeight, behavior:'smooth'});
+  },
   silenceOthers(keep){
     for(const s of this.slides){
       if(s===keep||!s.audio)continue;
@@ -513,13 +589,14 @@ const App={
   },
   ended(s){
     const i=this.slides.indexOf(s);
-    const next=this.slides[i+1]||this.slides[0];     // loop the reel
-    if(next)next.el.scrollIntoView();
+    this.goTo(i+1<this.slides.length ? i+1 : 0);     // loop the reel
   },
   hud(rate,el,d){
     const r=document.getElementById('hudr'),t=document.getElementById('hudt'),f=document.getElementById('mfill');
+    const rw=document.getElementById('hudrw');
+    if(rw)rw.style.display=d.kind==='note'?'none':'';
     if(r)r.textContent=rate;
-    if(t)t.textContent=`${d.title} — ${fmt(d.start/1000+el)}`;
+    if(t)t.textContent=d.kind==='note'?`${d.title} — voice note` : `${d.title} — ${fmt(d.start/1000+el)}`;
     if(f)f.style.width=(el/(d.dur/1000)*100)+'%';
   }
 };
