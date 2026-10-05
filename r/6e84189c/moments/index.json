@@ -45,6 +45,21 @@
   "hasAudio": true
  },
  {
+  "id": "3568539:717700:23000",
+  "file": "moments/3568539_717700_23000.json",
+  "title": "EJAE",
+  "sub": "guest on LE SSERAFIM's station",
+  "date": "15 September 2026",
+  "genre": "K-pop",
+  "channel": "FEARNOT",
+  "accent": "#ff73d7",
+  "msgCount": 12,
+  "userCount": 11,
+  "peak": 2,
+  "listens": 1597,
+  "hasAudio": true
+ },
+ {
   "id": "3555795:6234700:34000",
   "file": "moments/3555795_6234700_34000.json",
   "title": "ADÉLA",
@@ -72,6 +87,21 @@
   "userCount": 13,
   "peak": 3,
   "listens": 209,
+  "hasAudio": true
+ },
+ {
+  "id": "3574921:796900:21000",
+  "file": "moments/3574921_796900_21000.json",
+  "title": "Trueblood",
+  "sub": "EP release party",
+  "date": "18 September 2026",
+  "genre": "Western",
+  "channel": "Trueblood",
+  "accent": "#454545",
+  "msgCount": 73,
+  "userCount": 51,
+  "peak": 8,
+  "listens": 1322,
   "hasAudio": true
  },
  {

@@ -151,13 +151,35 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
  100%{transform:translateY(-270px) scale(1.1);opacity:0}}
 
 .gate{position:absolute;inset:0;z-index:9;cursor:pointer;color:#fff;overflow:hidden;
- background:var(--bg);display:flex;flex-direction:column;justify-content:flex-end;padding:34px 28px 38px}
-.gate::before{content:'';position:absolute;left:50%;top:26%;transform:translate(-50%,-50%);
+ background:var(--bg);display:flex;flex-direction:column;justify-content:space-between;padding:0 28px 38px}
+.gate::before{content:'';position:absolute;left:50%;top:24%;transform:translate(-50%,-50%);
  width:620px;height:620px;border-radius:50%;background:var(--ring1);opacity:.5}
 .gate::after{content:'';position:absolute;inset:0;
- background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.42) 52%,rgba(0,0,0,.78) 100%)}
+ background:linear-gradient(180deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,.16) 26%,rgba(0,0,0,.46) 56%,rgba(0,0,0,.8) 100%)}
 .gate>*{position:relative;z-index:2}
-.gate .nm{font-size:54px;line-height:.95;font-weight:800;letter-spacing:-2px;color:#fff;
+/* the card leads with the channel, the way the app does, not with a text headline */
+.gtop{padding-top:74px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.glogo{height:118px;width:100%;display:grid;place-items:center;padding:0 18px}
+.glogo img{max-width:100%;max-height:100%;object-fit:contain;
+ filter:drop-shadow(0 8px 30px rgba(0,0,0,.5))}
+/* no channel behind this station, so the host stands in for the logo */
+.gstation{display:flex;flex-direction:column;align-items:center;gap:13px}
+.gav{position:relative;width:116px;height:116px;border-radius:50%;overflow:hidden;
+ border:2px solid rgba(255,255,255,.3);box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.gav .av,.gav .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gword{font-size:32px;font-weight:800;letter-spacing:-1px;text-align:center;line-height:1.05;
+ text-shadow:0 2px 20px rgba(0,0,0,.45)}
+.gtag{font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;text-align:center;
+ color:rgba(255,255,255,.82);font-weight:600;text-shadow:0 1px 10px rgba(0,0,0,.6)}
+.gmid{display:flex;flex-direction:column;align-items:center;gap:11px}
+.gfaces{display:flex;justify-content:center;gap:-10px}
+.gface{position:relative;width:58px;height:58px;border-radius:50%;overflow:hidden;
+ border:2px solid rgba(255,255,255,.34);box-shadow:0 6px 22px rgba(0,0,0,.4);margin-left:-12px}
+.gface:first-child{margin-left:0}
+.gface .av,.gface .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ghandles{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.85);text-align:center;
+ letter-spacing:.2px;max-width:30ch;line-height:1.4;text-shadow:0 1px 10px rgba(0,0,0,.55)}
+.gate .nm{font-size:44px;line-height:.98;font-weight:800;letter-spacing:-1.6px;color:#fff;
  text-shadow:0 2px 24px rgba(0,0,0,.45);word-break:break-word}
 .gate .ttl{font-size:16px;font-weight:600;margin-top:12px;color:#fff;opacity:.95}
 .gate .ctx{font-size:15px;line-height:1.45;margin-top:10px;color:rgba(255,255,255,.88);max-width:34ch}
@@ -227,6 +249,31 @@ function wanted(){
   let s=q.getAll('s').flatMap(v=>v.split(','));
   return s.map(v=>v.trim()).filter(v=>/^\d+:\d+:\d+$/.test(v)||/^note:\d+$/.test(v));
 }
+/* The landing card opens on the channel itself — the same logo the app shows at the
+   top of the station. Stations with no channel behind them show their host instead. */
+function gateHead(d){
+  const c=d.channel;
+  const body = c.logo
+    ? `<div class="glogo"><img src="${c.logo}" alt="${esc(c.name)}"></div>`
+    : (()=>{ const sp=(d.speakers||[])[0];
+        return `<div class="gstation">
+          <div class="gav"><svg class="av" viewBox="0 0 40 40">${DEFAV}</svg>
+            ${sp&&sp[1]?`<img class="pic" loading="lazy" src="${AVB}${sp[1]}" onerror="this.style.display='none'">`:''}
+          </div>
+          ${c.name!==d.title?`<div class="gword">${esc(c.name)}</div>`:''}</div>`; })();
+  const members = c.members?` &middot; ${num(c.members)} members`:'';
+  const sp=d.speakers||[];
+  // who you are about to hear — the same faces the station shows under its logo
+  const faces = (c.logo && sp.length && d.kind!=='note')
+    ? `<div class="gmid"><div class="gfaces">${sp.map(x=>`
+        <div class="gface"><svg class="av" viewBox="0 0 40 40">${DEFAV}</svg>
+          ${x[1]?`<img class="pic" loading="lazy" src="${AVB}${x[1]}" onerror="this.style.display='none'">`:''}
+        </div>`).join('')}</div>
+        <div class="ghandles">${sp.map(x=>'@'+esc(x[0])).join(' &middot; ')}</div></div>`
+    : '<div class="gmid"></div>';
+  return `<div class="gtop">${body}<div class="gtag">${esc(c.tag)}${members}</div></div>${faces}`;
+}
+
 const DWELL=2900;   // how long an intro card holds before the clip starts
 
 /* ---------- one slide ---------- */
@@ -299,17 +346,20 @@ class Slide{
         </div>
       </div>
       <div class="gate" data-gate>
-        <div class="nm">${esc(d.title)}</div>
-        ${d.showTitle?`<div class="ttl">&ldquo;${esc(d.showTitle)}&rdquo;</div>`:''}
-        ${d.context?`<div class="ctx">${esc(d.context)}</div>`:''}
-        <div class="fx">
-          <div><b>${num(d.listens)}</b><span>in the show</span></div>
-          <div><b>${num(d.msgCount)}</b><span>messages</span></div>
-          <div><b>${num(d.userCount)}</b><span>people</span></div>
-          <div><b>${d.peak}/sec</b><span>peak</span></div>
+        ${gateHead(d)}
+        <div class="gbot">
+          <div class="nm">${esc(d.title)}</div>
+          ${d.showTitle?`<div class="ttl">&ldquo;${esc(d.showTitle)}&rdquo;</div>`:''}
+          ${d.context?`<div class="ctx">${esc(d.context)}</div>`:''}
+          <div class="fx">
+            <div><b>${num(d.listens)}</b><span>in the show</span></div>
+            <div><b>${num(d.msgCount)}</b><span>messages</span></div>
+            <div><b>${num(d.userCount)}</b><span>people</span></div>
+            <div><b>${d.peak}/sec</b><span>peak</span></div>
+          </div>
+          <div class="go"><div class="pb">&#9654;</div>
+            <em data-hint>${d.date} &middot; ${(d.dur/1000).toFixed(0)} seconds, at the speed it happened</em></div>
         </div>
-        <div class="go"><div class="pb">&#9654;</div>
-          <em data-hint>${d.date} &middot; 45 seconds, at the speed it happened</em></div>
         <i class="dwell" data-dwell></i>
       </div>
     </div></div>`;
@@ -380,15 +430,18 @@ class Slide{
         </div>
       </div>
       <div class="gate" data-gate>
-        <div class="nm">${esc(d.title)}</div>
-        <div class="ttl">sent a voice note to ${esc(d.channel.name)}</div>
-        <div class="ctx">${esc(d.context)}</div>
-        <div class="fx">
-          <div><b>${num(d.channel.members)}</b><span>channel members</span></div>
-          <div><b>${(d.dur/1000).toFixed(0)}s</b><span>note</span></div>
+        ${gateHead(d)}
+        <div class="gbot">
+          <div class="nm">${esc(d.title)}</div>
+          <div class="ttl">sent a voice note to ${esc(d.channel.name)}</div>
+          <div class="ctx">${esc(d.context)}</div>
+          <div class="fx">
+            <div><b>${num(d.channel.members)}</b><span>channel members</span></div>
+            <div><b>${(d.dur/1000).toFixed(0)}s</b><span>note</span></div>
+          </div>
+          <div class="go"><div class="pb">&#9654;</div>
+            <em data-hint>${d.date} &middot; straight from the artist</em></div>
         </div>
-        <div class="go"><div class="pb">&#9654;</div>
-          <em data-hint>${d.date} &middot; straight from the artist</em></div>
         <i class="dwell" data-dwell></i>
       </div>
     </div></div>`;
