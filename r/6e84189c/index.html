@@ -54,13 +54,16 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
  display:flex;align-items:center;gap:10px;padding:0 10px;color:#241419;margin-top:4px}
 .note .bar .av{width:44px;height:44px;border-radius:50%;background:rgba(36,20,25,.15);flex:0 0 auto}
 .note .nt{font-size:14px;opacity:.85}
-.hostwrap{display:grid;place-items:center;margin-top:46px}
+.hostwrap{display:flex;justify-content:center;align-items:flex-start;gap:16px;margin-top:46px}
+.spk{display:grid;place-items:center;width:84px}
 .hostav{position:relative;width:72px;height:72px}
+.hostav .pic{position:absolute;inset:0;width:72px;height:72px;border-radius:50%;object-fit:cover}
 .av{border-radius:50%;background:#2d142c;display:block;overflow:hidden;object-fit:cover}
 .mic{position:absolute;right:-3px;bottom:-1px;width:33px;height:33px;border-radius:50%;
  background:#fff;display:grid;place-items:center}
 .mic svg{width:17px;height:17px}
-.hostname{margin-top:8px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:5px}
+.hostname{margin-top:8px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:4px;
+ max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hb{width:15px;height:15px;border-radius:50%;background:rgba(0,0,0,.35);display:grid;
  place-items:center;font-size:8px}
 
@@ -259,15 +262,17 @@ class Slide{
         <div class="logo">${d.channel.logo
             ?`<img src="${d.channel.logo}" alt="${esc(d.channel.name)}">`
             :`<span class="wordmark">${esc(d.channel.name)}</span>`}</div>
-        <div class="hostwrap">
-          <div class="hostav">
-            <svg class="av" viewBox="0 0 40 40" width="72" height="72">${DEFAV}</svg>
-            <div class="mic"><svg viewBox="0 0 24 24" fill="none" stroke="#191016" stroke-width="2" stroke-linecap="round">
-              <path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/>
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path d="M4 4l16 16" stroke-width="2.4"/></svg></div>
-          </div>
-          <div class="hostname">${esc(d.host)}<span class="hb">&#9733;</span></div>
-        </div>
+        <div class="hostwrap">${(d.speakers||[[d.host,'',1]]).map(sp=>`
+          <div class="spk">
+            <div class="hostav">
+              <svg class="av" viewBox="0 0 40 40" width="72" height="72">${DEFAV}</svg>
+              ${sp[1]?`<img class="pic" loading="lazy" src="${AVB}${sp[1]}" onerror="this.style.display='none'">`:''}
+              ${sp[2]?`<div class="mic"><svg viewBox="0 0 24 24" fill="none" stroke="#191016" stroke-width="2" stroke-linecap="round">
+                <path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/>
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path d="M4 4l16 16" stroke-width="2.4"/></svg></div>`:''}
+            </div>
+            <div class="hostname">${esc(sp[0])}</div>
+          </div>`).join('')}</div>
         <div class="now" data-now>
           <div class="art"></div>
           <div class="meta"><b>Music playing</b>
@@ -350,10 +355,10 @@ class Slide{
           ?`<img src="${d.channel.logo}" alt="${esc(d.channel.name)}">`
           :`<span class="wordmark">${esc(d.channel.name)}</span>`}</div>
         <div class="hostwrap">
-          <div class="hostav">
+          <div class="spk"><div class="hostav">
             <svg class="av" viewBox="0 0 40 40" width="72" height="72">${DEFAV}</svg>
           </div>
-          <div class="hostname">${esc(d.title)}<span class="hb">&#9733;</span></div>
+          <div class="hostname">${esc(d.title)}</div></div>
         </div>
         <div class="now voice" data-now>
           <div class="art"></div><div class="wave" data-wv></div>
