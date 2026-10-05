@@ -38,6 +38,9 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 
 .logo{height:96px;margin-top:34px;display:grid;place-items:center;padding:0 46px}
 .logo img{max-width:100%;max-height:100%;object-fit:contain}
+.notechat{justify-content:center;gap:12px;padding:0 22px 20px;text-align:center}
+.notechat p{font-size:15px;line-height:1.45;opacity:.9}
+.notechat p.q{font-size:13px;opacity:.6;margin-top:2px}
 .wordmark{font-size:38px;font-weight:800;letter-spacing:-1px;text-align:center;line-height:1.05}
 /* voice note: no show behind it, so the card is the whole screen */
 .note{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -271,9 +274,9 @@ class Slide{
           <div class="tag">ON AIR</div>
           <div class="tag n"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg> ${num(d.listens)}</div>
           <div class="rule"></div></div>
-        <div class="shop"><div class="th"></div>
-          <div class="st"><b>${esc(d.title)} Official Shop <i>&#10004;</i></b><span>Merch &middot; in show</span></div>
-          <div class="shopbtn">SHOP NOW</div></div>
+        ${d.shop?`<div class="shop"><div class="th"></div>
+          <div class="st"><b>${esc(d.shop)} <i>&#10004;</i></b><span>Merch &middot; in show</span></div>
+          <div class="shopbtn">SHOP NOW</div></div>`:''}
         <div class="chatwrap"><div class="chat" data-chat></div></div>
         <div class="hearts" data-hearts></div>
         <div class="ask">
@@ -326,20 +329,46 @@ class Slide{
     this.draw(0);
   }
 
-  /* a voice note has no station screen to rebuild — show the note itself */
+  /* a voice note still belongs to a channel, so show it in the channel, not on a blank card */
   renderNote(t){
     const d=this.d;
     const vars=Object.entries(t).map(([k,v])=>`--${k}:${v}`).join(';');
     this.el.innerHTML=`<div class="fit"><div class="ph" style="${vars}">
       <div class="rings"></div>
-      <div class="note">
-        ${d.channel.logo?`<img class="lg" src="${d.channel.logo}" alt="${esc(d.channel.name)}">`
-                        :`<div class="wm">${esc(d.channel.name)}</div>`}
-        <div class="who">${esc(d.channel.tag)} &middot; ${num(d.channel.members)} members</div>
-        <div class="wm">${esc(d.title)}</div>
-        <div class="bar"><div class="av"></div><div class="wave" data-wv></div>
-          <div class="vtime" data-vt>0:00</div></div>
-        <div class="nt">voice note &ldquo;${esc(d.noteTitle)}&rdquo; &middot; ${d.date}</div>
+      <div class="col">
+        <div class="hd">
+          <div class="cbtn"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+          <div class="hdT"><b>${esc(d.channel.name)}</b><span>${esc(d.channel.tag)}</span></div>
+          <div class="pill"># Threads</div>
+          <div class="cbtn">&#128266;</div>
+        </div>
+        <div class="logo">${d.channel.logo
+          ?`<img src="${d.channel.logo}" alt="${esc(d.channel.name)}">`
+          :`<span class="wordmark">${esc(d.channel.name)}</span>`}</div>
+        <div class="hostwrap">
+          <div class="hostav">
+            <svg class="av" viewBox="0 0 40 40" width="72" height="72">${DEFAV}</svg>
+          </div>
+          <div class="hostname">${esc(d.title)}<span class="hb">&#9733;</span></div>
+        </div>
+        <div class="now voice" data-now>
+          <div class="art"></div><div class="wave" data-wv></div>
+          <div class="vtime" data-vt>0:00</div>
+        </div>
+        <div class="row"><div class="rule"></div>
+          <div class="tag">VOICE NOTE</div>
+          <div class="tag n"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg> ${num(d.channel.members)}</div>
+          <div class="rule"></div></div>
+        <div class="chatwrap"><div class="chat notechat">
+          <p>${esc(d.title)} recorded this straight to ${esc(d.channel.name)}.</p>
+          <p>Any host on the channel can play it into a live show, to everyone listening.</p>
+          <p class="q">&ldquo;${esc(d.noteTitle)}&rdquo; &middot; ${d.date}</p>
+        </div></div>
+        <div class="cmp">
+          <div class="cb">&#128293;</div>
+          <div class="inp">Comment <span class="gif">GIF</span></div>
+          <div class="cb">&#43;</div><div class="cb">&#128717;</div><div class="cb">&#128156;</div>
+        </div>
       </div>
       <div class="gate" data-gate>
         <div class="nm">${esc(d.title)}</div>
@@ -355,7 +384,7 @@ class Slide{
       </div>
     </div></div>`;
     this.fit=this.el.querySelector('.fit');
-    this.nowEl=this.el.querySelector('.bar');
+    this.nowEl=this.el.querySelector('[data-now]');
     this.gate=this.el.querySelector('[data-gate]');
     this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
     this.audio=new Audio(d.audio); this.audio.preload='auto';
@@ -367,6 +396,7 @@ class Slide{
     this.at=0; this.mic=true;
     this.scale();
   }
+
   tickNote(){
     const d=this.d, el=this.audio.currentTime;
     if(el>d.dur/1000){ this.pause(); if(App.slides[App.cur]===this) App.ended(this); return; }

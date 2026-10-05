@@ -180,18 +180,18 @@
   "hasAudio": true
  },
  {
-  "id": "note:253",
-  "file": "moments/note_253.json",
-  "kind": "note",
+  "id": "3584310:179500:30000",
+  "file": "moments/3584310_179500_30000.json",
   "title": "ROSÉ",
-  "sub": "a voice note to the channel",
+  "sub": "“new trick” listening party",
   "date": "21 September 2026",
+  "genre": "K-pop",
   "channel": "numberoneHQ",
   "accent": "#222121",
-  "msgCount": 0,
-  "userCount": 0,
-  "peak": 0,
-  "listens": 187544,
+  "msgCount": 41,
+  "userCount": 27,
+  "peak": 4,
+  "listens": 1097,
   "hasAudio": true
  },
  {
