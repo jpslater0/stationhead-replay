@@ -110,6 +110,10 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 .mav{width:40px;height:40px;flex:0 0 auto;position:relative}
 .mav .av,.mav svg{width:40px;height:40px;border-radius:50%}
 .mav .ov{position:absolute;left:0;top:0}
+/* station syndicated to this channel */
+.mav.sy .av,.mav.sy svg{border:2px solid #ffe06b}
+.mav.sy .star{position:absolute;left:-1px;bottom:-1px;width:15px;height:15px;border-radius:50%;
+ background:#ffe06b;display:grid;place-items:center;font-size:9px;color:#1a1208;z-index:2}
 .mb{flex:1;min-width:0}
 .mh{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .mh b{font-size:15px;font-weight:700;letter-spacing:-.1px}
@@ -444,7 +448,8 @@ class Slide{
     for(let i=Math.max(0,upto-9);i<upto;i++){
       const u=d.users[d.msgs[i][1]];
       const av=u[1]?`<img class="av ov" loading="lazy" src="${AVB}${u[1]}" onerror="this.style.display='none'">`:'';
-      h.push(`<div class="m"><div class="mav"><svg viewBox="0 0 40 40">${DEFAV}</svg>${av}</div>
+      const sy=u[2]?' sy':'', badge=u[2]?'<span class="star">&#9733;</span>':'';
+      h.push(`<div class="m"><div class="mav${sy}"><svg viewBox="0 0 40 40">${DEFAV}</svg>${av}${badge}</div>
         <div class="mb"><div class="mh"><b>${esc(u[0])}</b><em>just now</em></div>
         <div class="mt">${ment(d.msgs[i][2])}</div></div></div>`);
     }
