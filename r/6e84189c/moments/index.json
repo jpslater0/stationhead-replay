@@ -150,36 +150,6 @@
   "hasAudio": true
  },
  {
-  "id": "note:258",
-  "file": "moments/note_258.json",
-  "kind": "note",
-  "title": "Shawn Mendes",
-  "sub": "a voice note to the channel",
-  "date": "25 September 2026",
-  "channel": "Mendes Army",
-  "accent": "#607268",
-  "msgCount": 0,
-  "userCount": 0,
-  "peak": 0,
-  "listens": 35338,
-  "hasAudio": true
- },
- {
-  "id": "note:259",
-  "file": "moments/note_259.json",
-  "kind": "note",
-  "title": "Olivia Dean",
-  "sub": "a voice note to the channel",
-  "date": "29 September 2026",
-  "channel": "Olivia Dean Worldwide",
-  "accent": "#e89bae",
-  "msgCount": 0,
-  "userCount": 0,
-  "peak": 0,
-  "listens": 2036,
-  "hasAudio": true
- },
- {
   "id": "3584310:179500:30000",
   "file": "moments/3584310_179500_30000.json",
   "title": "ROSÉ",
@@ -192,21 +162,6 @@
   "userCount": 27,
   "peak": 4,
   "listens": 1097,
-  "hasAudio": true
- },
- {
-  "id": "note:252",
-  "file": "moments/note_252.json",
-  "kind": "note",
-  "title": "Troye Sivan",
-  "sub": "a voice note to the channel",
-  "date": "18 September 2026",
-  "channel": "TROYE HQ",
-  "accent": "#262162",
-  "msgCount": 0,
-  "userCount": 0,
-  "peak": 0,
-  "listens": 1774,
   "hasAudio": true
  },
  {
