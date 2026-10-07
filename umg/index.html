@@ -150,6 +150,43 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 @keyframes fly{0%{transform:translateY(0) scale(.7);opacity:0}12%{opacity:1}
  100%{transform:translateY(-270px) scale(1.1);opacity:0}}
 
+/* The numbers have to move. A static card tells a label the show was big; a
+   counter climbing while they watch tells them why. */
+/* Sits in the slack under the channel logo, clear of the real header and the
+   composer, so the app's own chrome stays intact. */
+.live{position:absolute;left:0;right:0;top:62px;z-index:7;display:flex;
+ justify-content:center;gap:7px;pointer-events:none}
+.live>div{background:rgba(0,0,0,.42);backdrop-filter:blur(7px);border-radius:11px;
+ padding:5px 11px 6px;text-align:center;min-width:62px;
+ border:1px solid rgba(255,255,255,.12)}
+.live b{display:block;font-size:17px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;
+ line-height:1.15}
+.live span{font-size:8px;letter-spacing:.8px;text-transform:uppercase;
+ color:rgba(255,255,255,.75);font-weight:600;white-space:nowrap}
+.live b.hit{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:scale(1.5);color:var(--ring1)}100%{transform:scale(1);color:#fff}}
+.live .buy b{color:#ffd76b}
+/* the quiet before, compressed: a label would not sit through eight real minutes */
+.pre{position:absolute;inset:0;z-index:12;background:var(--bg);color:#fff;
+ display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+ pointer-events:none}
+.pre.on{display:flex}
+.pre .pn{font-size:72px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.pre .pl{font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.7);
+ font-weight:600;text-align:center;max-width:26ch;line-height:1.6}
+.pre .pbar{width:170px;height:3px;background:rgba(255,255,255,.2);overflow:hidden;border-radius:2px}
+.pre .pbar i{display:block;height:100%;width:0;background:#fff}
+/* what the artist actually said, under the chat */
+/* A lower third for what the artist is actually saying. Backed, so it reads as
+   a caption rather than colliding with the chat behind it. */
+.cap{position:absolute;left:18px;right:18px;bottom:150px;z-index:8;text-align:center;
+ font-size:14.5px;font-weight:600;color:#fff;line-height:1.4;
+ background:rgba(8,6,9,.82);backdrop-filter:blur(8px);
+ border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:9px 13px;
+ opacity:0;transform:translateY(5px);transition:opacity .25s,transform .25s;
+ pointer-events:none}
+.cap.on{opacity:1;transform:none}
+
 .gate{position:absolute;inset:0;z-index:9;cursor:pointer;color:#fff;overflow:hidden;
  background:var(--bg);display:flex;flex-direction:column;justify-content:space-between;padding:0 28px 38px}
 .gate::before{content:'';position:absolute;left:50%;top:24%;transform:translate(-50%,-50%);
@@ -339,6 +376,7 @@ class Slide{
           <div class="shopbtn">SHOP NOW</div></div>`:''}
         <div class="chatwrap"><div class="chat" data-chat></div></div>
         <div class="hearts" data-hearts></div>
+        <div class="cap" data-cap></div>
         <div class="ask">
           <div class="mk"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
           <p>Ask to speak on<br><b>${esc(d.host)}</b>&rsquo;s station</p>
@@ -349,6 +387,16 @@ class Slide{
           <div class="cb">&#43;</div><div class="cb">&#128717;</div><div class="cb">&#128156;</div>
         </div>
       </div>
+      <div class="live" data-live>
+        <div><b data-lv="msgs">0</b><span>messages</span></div>
+        <div><b data-lv="people">0</b><span>people</span></div>
+        ${d.purchases?`<div class="buy"><b data-lv="buys">0</b><span>${esc(d.purchases.label)}</span></div>`:''}
+      </div>
+      ${d.preroll?`<div class="pre" data-pre>
+        <div class="pn" data-pn>0</div>
+        <div class="pl">${esc(d.preroll.note)}</div>
+        <div class="pbar"><i data-pbar></i></div>
+      </div>`:''}
       <div class="gate" data-gate>
         ${gateHead(d)}
         <div class="gbot">
@@ -379,6 +427,12 @@ class Slide{
     this.heartsEl=this.el.querySelector('[data-hearts]');
     this.gate=this.el.querySelector('[data-gate]');
     this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
+    this.lv={msgs:this.el.querySelector('[data-lv=msgs]'),
+             people:this.el.querySelector('[data-lv=people]'),
+             buys:this.el.querySelector('[data-lv=buys]')};
+    this.capEl=this.el.querySelector('[data-cap]');
+    this.preEl=this.el.querySelector('[data-pre]');
+    this.seen=new Set(); this.buys=0; this.capAt=-1;
     this.at=d.start/1000;                 // playhead, in show seconds
     if(d.audio){
       this.audio=new Audio(d.audio);
@@ -476,6 +530,38 @@ class Slide{
     if(App.slides[App.cur]===this) App.hud(0,el,d);
   }
 
+  /* Counters that climb while it plays. People is distinct senders so far, not a
+     total: it should rise as new names appear, the way the room fills up. */
+  meters(i, el){
+    const d=this.d; if(!this.lv||!this.lv.msgs)return;
+    for(let k=this.seen.size?0:0,n=i;k<n;k++){}        // cheap: recount only on change
+    if(i!==this._lastI){
+      this._lastI=i;
+      this.seen.clear();
+      for(let k=0;k<i;k++) this.seen.add(d.msgs[k][1]);
+      this.bump(this.lv.msgs, i);
+      this.bump(this.lv.people, this.seen.size);
+    }
+    if(d.purchases){
+      let b=0; for(const [t,n] of d.purchases.perSec){ if(t<=el) b+=n; }
+      if(b!==this.buys){ this.buys=b; this.bump(this.lv.buys, b, true); }
+    }
+    if(d.transcript && this.capEl){
+      let j=-1; for(let k=0;k<d.transcript.length;k++) if(d.transcript[k][0]<=el) j=k;
+      if(j!==this.capAt){
+        this.capAt=j;
+        this.capEl.textContent = j>=0 ? d.transcript[j][1] : '';
+        this.capEl.classList.toggle('on', j>=0);
+      }
+    }
+  }
+  bump(el, v, always){
+    if(!el)return;
+    const was=el.textContent;
+    el.textContent = v>999 ? (v/1000).toFixed(1)+'K' : v;
+    if(always && was!==el.textContent){ el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+  }
+
   scale(){
     if(!this.fit)return;
     const k=Math.min(1,(innerHeight-40)/898,(innerWidth-32)/460);
@@ -542,6 +628,8 @@ class Slide{
     this.cnt.textContent=i>999?(i/1000).toFixed(1)+'K':i;
     if(App.slides[App.cur]===this)App.hud(c,el,d);
 
+    this.meters(i, el);
+
     const at=this.talking(el);
     if(at>=0&&!this.mic)this.setMic(true,at);
     else if(at<0&&this.mic)this.setMic(false,el);
@@ -576,8 +664,30 @@ class Slide{
     clearTimeout(this.dw);
     this.dw=setTimeout(()=>{
       if(App.slides[App.cur]!==this) return;      // scrolled away while the card held
-      this.gate.style.display='none'; this.play();
+      this.gate.style.display='none';
+      this.preroll(()=>this.play());
     }, ms);
+  }
+
+  /* The contrast is the point: it was quiet for eight minutes, then she spoke.
+     Nobody will sit through the eight minutes, so run them in four seconds and
+     let the counter do the talking, then hand over to real time. */
+  preroll(next){
+    const p=this.d.preroll;
+    if(!p||!this.preEl) return next();
+    const n=this.preEl.querySelector('[data-pn]'), bar=this.preEl.querySelector('[data-pbar]');
+    const base=(this.d.purchases&&this.d.purchases.baseline)||{};
+    const total=base.total||0, ms=p.seconds*1000, t0=performance.now();
+    this.preEl.classList.add('on');
+    if(bar){ bar.style.transition=`width ${ms}ms linear`; requestAnimationFrame(()=>bar.style.width='100%'); }
+    const step=()=>{
+      if(App.slides[App.cur]!==this){ this.preEl.classList.remove('on'); this.preRAF=0; return; }
+      const k=Math.min(1,(performance.now()-t0)/ms);
+      if(n) n.textContent=Math.round(total*k);
+      if(k<1){ this.preRAF=requestAnimationFrame(step); }
+      else { this.preRAF=0; this.preEl.classList.remove('on'); next(); }
+    };
+    this.preRAF=requestAnimationFrame(step);
   }
   reset(){
     clearTimeout(this.dw); this.started=false;
@@ -676,7 +786,10 @@ const App={
   },
   silenceOthers(keep){
     for(const s of this.slides){
-      if(s===keep||!s.audio)continue;
+      if(s===keep)continue;
+      // a compressed pre-roll is also "playing" — stop it when we move away
+      if(s.preRAF){ cancelAnimationFrame(s.preRAF); s.preRAF=0; if(s.preEl) s.preEl.classList.remove('on'); }
+      if(!s.audio)continue;
       s.audio.pause();
       s.playing=false;
       clearTimeout(s.dw);
