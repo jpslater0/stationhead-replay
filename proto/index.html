@@ -41,12 +41,42 @@ body{margin:0;background:#08070a;color:#fff;font:15px/1.5 Inter,system-ui,sans-s
  background:rgba(0,0,0,.3)}
 .m p{margin:0;font-size:11.5px;line-height:1.32;word-break:break-word}
 .m p b{display:block;font-size:10px;opacity:.72;font-weight:700}
-/* the caption, as a lower third */
-.cap{position:absolute;left:14px;right:14px;bottom:16px;z-index:5;text-align:center;
- background:rgba(8,6,9,.86);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.14);
- border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600;line-height:1.35;
- opacity:0;transform:translateY(5px);transition:.25s}
-.cap.on{opacity:1;transform:none}
+/* A fan asks to be named. She says it. They buy. The message itself is the
+   evidence, so the message is what lights up — no subtitle needed. */
+.m.asked p{box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);border-radius:7px;
+ padding:3px 6px;margin:-3px -6px}
+.m.named{animation:none}
+.m.named p{background:linear-gradient(135deg,rgba(255,212,100,.3),rgba(255,180,40,.16));
+ box-shadow:0 0 0 1px rgba(255,214,110,.75),0 4px 20px rgba(255,180,40,.35);
+ border-radius:8px;padding:5px 8px;margin:-5px -8px}
+.m.named p b{color:#ffd76b;opacity:1}
+.m.named .av{box-shadow:0 0 0 2px #ffd76b}
+.m.named p::after{content:'named on air';display:block;margin-top:3px;font-size:8.5px;
+ letter-spacing:1px;text-transform:uppercase;font-weight:800;color:#ffd76b}
+/* At 48 messages a second nobody can read the stream, let alone spot a
+   highlight in it. So when she says a name, lift that person's message out and
+   hold it still long enough to be read. */
+.pins{position:absolute;left:12px;right:12px;bottom:16px;z-index:7;display:flex;
+ flex-direction:column;gap:7px;pointer-events:none}
+.pin{background:linear-gradient(135deg,rgba(46,32,8,.97),rgba(20,14,6,.97));
+ border:1px solid rgba(255,214,110,.6);border-radius:12px;padding:8px 11px;
+ box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 22px rgba(255,180,40,.2);
+ animation:pin .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pin{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:none}}
+.pin .who{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.pin .who img{width:19px;height:19px;border-radius:50%;object-fit:cover}
+.pin .who b{font-size:11px;font-weight:800;color:#ffd76b}
+.pin .who em{font-style:normal;margin-left:auto;font-size:8px;letter-spacing:.9px;
+ text-transform:uppercase;font-weight:800;color:#ffd76b;opacity:.85}
+.pin p{margin:0;font-size:11.5px;line-height:1.35;color:#fff}
+/* the names, as they are said */
+.calls{position:absolute;left:0;right:0;bottom:18px;z-index:6;display:flex;
+ justify-content:center;flex-wrap:wrap;gap:6px;pointer-events:none}
+.calls i{font-style:normal;font-size:13px;font-weight:800;color:#1a1206;
+ background:linear-gradient(145deg,#ffe49a,#ffc23c);border-radius:999px;padding:5px 13px;
+ box-shadow:0 5px 20px rgba(255,180,40,.5);animation:nm 3s ease-out forwards}
+@keyframes nm{0%{transform:scale(.5);opacity:0}12%{transform:scale(1.12);opacity:1}
+ 22%{transform:scale(1)}78%{opacity:1}100%{opacity:0;transform:translateY(-8px)}}
 
 /* ---------- the argument ---------- */
 .side{display:flex;flex-direction:column;gap:14px}
@@ -67,6 +97,13 @@ body{margin:0;background:#08070a;color:#fff;font:15px/1.5 Inter,system-ui,sans-s
 .chart b.lit{background:linear-gradient(180deg,#ffe49a,#ffb224);
  box-shadow:0 0 9px rgba(255,180,40,.5)}
 .chart b.quiet{background:rgba(255,255,255,.26)}
+/* the six seconds after she reads a name */
+.band{position:absolute;top:-4px;bottom:-3px;min-width:7px;background:rgba(255,196,60,.3);
+ border-radius:2px;opacity:0;transition:opacity .4s;
+ box-shadow:0 0 12px 3px rgba(255,180,40,.45)}
+.band.on{opacity:1}
+.band::before{content:'';position:absolute;left:50%;top:-9px;transform:translateX(-50%);
+ border:4px solid transparent;border-top-color:#ffd76b}
 .head{position:absolute;top:-5px;bottom:-3px;width:2px;background:#fff;
  box-shadow:0 0 11px 2px rgba(255,255,255,.65);transition:left .3s linear}
 .foot{display:flex;justify-content:space-between;font-size:10px;
@@ -96,7 +133,8 @@ body{margin:0;background:#08070a;color:#fff;font:15px/1.5 Inter,system-ui,sans-s
       <div class="onair"><i>ON AIR</i><i id="listens"></i></div>
       <div class="chat" id="chat"></div>
     </div>
-    <div class="cap" id="cap"></div>
+    <div class="pins" id="pins"></div>
+    <div class="calls" id="calls"></div>
     <div class="end" id="end">
       <div class="n" id="endn"></div>
       <div class="t" id="endt"></div>
@@ -106,8 +144,8 @@ body{margin:0;background:#08070a;color:#fff;font:15px/1.5 Inter,system-ui,sans-s
 
   <div class="side">
     <div class="phase" id="phase">Before she speaks</div>
-    <div class="claim" id="claim">She reads a name.<br><em>They buy.</em></div>
-    <div class="sub" id="sub">Olivia Rodrigo, 23 April. The chat is already busy &mdash; 22 messages a second. What changes when she picks up the mic is that it starts converting.</div>
+    <div class="claim" id="claim">They ask for their name.<br>She says it. <em>They buy.</em></div>
+    <div class="sub" id="sub">Olivia Rodrigo, 23 April. The chat does not get louder when she speaks &mdash; it is already at its ceiling, 48 messages a second, before and after. What changes is that it starts buying.</div>
     <div class="readout">
       <div class="big" id="big">0</div>
       <div class="unit" id="unit">albums sold<br>in this clip</div>
@@ -160,21 +198,47 @@ function litUpTo(sec){
     b.classList.toggle('quiet', s<=sec && s<640);
   }
 }
-function say(txt){ cap.textContent=txt||''; cap.classList.toggle('on', !!txt); }
 function bubble(h,av,txt){
-  const m=document.createElement('div'); m.className='m';
+  const lh=h.toLowerCase();
+  const m=document.createElement('div'); m.className='m'; m.dataset.h=lh;
+  if(PENDING.has(lh)){ m.classList.add('asked'); ASKED.set(lh,{h,av,txt}); }
   m.innerHTML=`<img class="av" src="${av?AVB+av:'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}">`+
               `<p><b>${esc(h)}</b>${esc(txt)}</p>`;
   chat.appendChild(m);
   while(chat.children.length>9) chat.firstChild.remove();
 }
+let PENDING=new Set(), ASKED=new Map();
+/* She reads the names out. Pull those people's own messages out of the stream
+   and hold them, because that is the evidence: they asked, she answered. */
+function callOut(sh){
+  calls.innerHTML = sh.names.map(n=>`<i>${esc(n)}</i>`).join('');
+  setTimeout(()=>{ calls.innerHTML=''; }, 3200);
+  for(const h of sh.handles){
+    const a=ASKED.get(h); if(!a) continue;
+    const p=document.createElement('div'); p.className='pin';
+    p.innerHTML=`<div class="who">`+
+      `<img src="${a.av?AVB+a.av:'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E'}">`+
+      `<b>@${esc(a.h)}</b><em>named on air</em></div><p>${esc(a.txt)}</p>`;
+    pins.appendChild(p);
+    setTimeout(()=>p.remove(), 5200);
+  }
+  while(pins.children.length>3) pins.firstChild.remove();
+}
 
 function start(){
   btn.disabled=true; btn.textContent='Playing';
   audio=new Audio(d.audio); audio.preload='auto';
-  chat.innerHTML=''; say(''); end.classList.remove('on');
+  chat.innerHTML=''; calls.innerHTML=''; pins.innerHTML=''; end.classList.remove('on');
   phase=1; t0=performance.now();
-  let bi=0, ci=0, lastSec=-1;
+  PENDING=new Set(d.shoutouts.flatMap(s=>s.handles)); ASKED=new Map();
+  let bi=0, ci=0, si=0;
+  // the six seconds after each name, drawn on the chart
+  const first=d.arc[0][0], last=d.arc[d.arc.length-1][0], span=last-first;
+  document.querySelectorAll('.band').forEach(b=>b.remove());
+  const bands=d.shoutouts.map(sh=>{ const b=document.createElement('div'); b.className='band';
+    b.style.left=((d.clipStart+sh.t-first)/span*100)+'%';
+    b.style.width=(d.stat.window/span*100)+'%';
+    document.getElementById('chart').appendChild(b); return b; });
   const beforeMsgs=d.before, clipMsgs=d.msgs, users=d.users;
 
   const tick=()=>{
@@ -207,9 +271,8 @@ function start(){
       let b=0; for(const [t,n] of d.purchases.perSec) if(t<=e) b+=n;
       big.textContent=b;
       const sec=d.clipStart+e; placeHead(sec); litUpTo(sec);
-      let j=-1; for(let k=0;k<d.transcript.length;k++) if(d.transcript[k][0]<=e) j=k;
-      say(j>=0?d.transcript[j][1]:'');
-      document.getElementById('phase').textContent='She is on the mic';
+      while(si<d.shoutouts.length && d.shoutouts[si].t<=e){ callOut(d.shoutouts[si]); bands[si].classList.add('on'); si++; }
+      document.getElementById('phase').textContent = si>0 ? 'She is reading names out' : 'She is on the mic';
       if(e>=CLIP){ phase=3; audio.pause(); t0=performance.now(); finish(); return; }
       raf=requestAnimationFrame(tick); return;
     }
