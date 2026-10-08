@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
 <meta name="referrer" content="no-referrer">
-<meta name="build" content="202610080225">
+<meta name="build" content="202610080230">
 <title>Stationhead replay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,13 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 #feed{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth}
 #feed::-webkit-scrollbar{display:none}
 .slide{height:100vh;scroll-snap-align:start;display:grid;place-items:center;position:relative}
-.fit{transform-origin:center center;display:flex;align-items:center;gap:30px}
+.fit{transform-origin:center center;display:flex;align-items:center;gap:30px;
+ transition:transform .55s cubic-bezier(.3,.9,.3,1)}
+/* Scrolling stays a vertical feed, one room per screen, the way people already
+   know how to read. The argument only opens once someone presses play. */
+.side{opacity:0;transform:translateX(-26px) scale(.97);pointer-events:none;
+ transition:opacity .4s ease,transform .55s cubic-bezier(.3,.9,.3,1)}
+.fit.open .side{opacity:1;transform:none;pointer-events:auto}
 /* The argument sits beside the room, not on top of it. Below 980px there is no
    space for both, so the panel steps aside and the room plays on its own. */
 .side{width:430px;flex:0 0 auto;display:flex;flex-direction:column;gap:14px;color:#fff}
@@ -661,9 +667,20 @@ class Slide{
     const has = !!(this.lv && this.lv.side);
     const wide = has && innerWidth >= 980;
     if(has) this.lv.side.classList.toggle('off', !wide);
+    this.wide = wide;
     const w = wide ? 460+30+430 : 460;
+    // scale for the open width either way, so the room never changes size when
+    // the panel arrives
     const k = Math.min(1,(innerHeight-40)/898,(innerWidth-32)/w);
-    this.fit.style.transform=`scale(${k})`;
+    this.k = k;
+    const shift = (wide && !this.fit.classList.contains('open')) ? (430+30)/2*k : 0;
+    this.fit.style.transform = `translateX(${shift}px) scale(${k})`;
+  }
+  openSide(on){
+    if(!this.fit||!this.wide)return;
+    this.fit.classList.toggle('open', !!on);
+    const shift = on ? 0 : (430+30)/2*(this.k||1);
+    this.fit.style.transform = `translateX(${shift}px) scale(${this.k||1})`;
   }
 
   /* talk windows were measured off the voice track at build time, so the
@@ -816,10 +833,15 @@ class Slide{
     }
     this.playing=true;
     this.gate.style.display='none';
+    this.openSide(true);
   }
   pause(){
     this.playing=false;
     if(this.audio)this.audio.pause(); else clearInterval(this.timer);
+  }
+  reset(){                       // back to the feed: close the panel, show the card
+    this.openSide(false);
+    if(this.gate) this.gate.style.display='';
   }
   get paused(){ return this.audio ? this.audio.paused : !this.playing; }
 }
@@ -888,6 +910,7 @@ const App={
       if(s===keep)continue;
       // a compressed pre-roll is also "playing" — stop it when we move away
       if(s.preRAF){ cancelAnimationFrame(s.preRAF); s.preRAF=0; if(s.preEl) s.preEl.classList.remove('on'); }
+      if(s.openSide) s.openSide(false);
       if(!s.audio)continue;
       s.audio.pause();
       s.playing=false;
