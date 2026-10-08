@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
 <meta name="referrer" content="no-referrer">
-<meta name="build" content="202610080230">
+<meta name="build" content="202610080237">
 <title>Stationhead replay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -232,6 +232,21 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
  pointer-events:none}
 .cap.on{opacity:1;transform:none}
 
+/* Tap the room to stop it. No control is drawn until someone does, because the
+   first job of the screen is to look like the app, not like a video player. */
+.hold{position:absolute;inset:0;z-index:11;display:none;place-items:center;
+ background:rgba(8,6,9,.5);backdrop-filter:blur(3px);cursor:pointer}
+.hold.on{display:grid}
+.holdbtns{display:flex;gap:14px}
+.holdbtns button{font:inherit;font-weight:700;font-size:13px;border:0;cursor:pointer;
+ display:flex;flex-direction:column;align-items:center;gap:7px;
+ background:none;color:#fff;padding:0}
+.holdbtns span{width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.95);
+ color:#17121a;display:grid;place-items:center;font-size:25px;
+ box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.holdbtns em{font-style:normal;font-size:11px;letter-spacing:.8px;text-transform:uppercase;
+ opacity:.85;font-weight:700}
+
 .gate{position:absolute;inset:0;z-index:9;cursor:pointer;color:#fff;overflow:hidden;
  background:var(--bg);display:flex;flex-direction:column;justify-content:space-between;padding:0 28px 38px}
 .gate::before{content:'';position:absolute;left:50%;top:24%;transform:translate(-50%,-50%);
@@ -455,6 +470,10 @@ class Slide{
         </div>
       </div>
       <div class="live" data-live><div class="meter"><i data-meter></i></div></div>
+      <div class="hold" data-hold><div class="holdbtns">
+        <button data-resume><span>&#9654;</span><em>Resume</em></button>
+        <button data-again><span>&#8635;</span><em>Again</em></button>
+      </div></div>
       ${d.preroll?`<div class="pre" data-pre>
         <div class="pn" data-pn>0</div>
         <div class="pl">${esc(d.preroll.note)}</div>
@@ -490,6 +509,17 @@ class Slide{
     this.heartsEl=this.el.querySelector('[data-hearts]');
     this.gate=this.el.querySelector('[data-gate]');
     this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
+    this.hold=this.el.querySelector('[data-hold]');
+    const ph=this.el.querySelector('.ph');
+    if(ph) ph.addEventListener('click',e=>{
+      if(this.gate && this.gate.style.display!=='none') return;   // the card handles its own tap
+      if(e.target.closest('[data-hold] button')) return;
+      this.playing ? this.holdOn() : this.holdOff();
+    });
+    if(this.hold){
+      this.hold.querySelector('[data-resume]').addEventListener('click',()=>this.holdOff());
+      this.hold.querySelector('[data-again]').addEventListener('click',()=>this.again());
+    }
     this.lv={meter:this.el.querySelector('[data-meter]'),
              chips:this.el.querySelector('[data-chips]'),
              big:this.el.querySelector('[data-big]'),
@@ -660,6 +690,25 @@ class Slide{
     const was=el.textContent;
     el.textContent = v>999 ? (v/1000).toFixed(1)+'K' : v;
     if(always && was!==el.textContent){ el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); }
+  }
+
+
+  holdOn(){ this.pause(); if(this.hold) this.hold.classList.add('on'); }
+  holdOff(){ if(this.hold) this.hold.classList.remove('on'); this.play(); }
+  /* Watch it again. Everything the clip accumulated has to go back to zero or
+     the counters carry on from where they stopped. */
+  again(){
+    if(this.hold) this.hold.classList.remove('on');
+    this.shown=0; this._lastI=undefined; this._bigV=undefined; this.buys=0;
+    this._mw=undefined; this.capAt=-1;
+    if(this.seen) this.seen.clear();
+    if(this.box) this.box.innerHTML='';
+    if(this.lv&&this.lv.big) this.lv.big.textContent='0';
+    if(this.lv&&this.lv.chips) this.lv.chips.innerHTML='';
+    if(this.capEl){ this.capEl.textContent=''; this.capEl.classList.remove('on'); }
+    if(this.lv&&this.lv.phase&&this.d.phaseLive) this.lv.phase.textContent=this.d.phaseLive;
+    this.seek(this.d.start/1000);
+    this.play();
   }
 
   scale(){
@@ -911,6 +960,7 @@ const App={
       // a compressed pre-roll is also "playing" — stop it when we move away
       if(s.preRAF){ cancelAnimationFrame(s.preRAF); s.preRAF=0; if(s.preEl) s.preEl.classList.remove('on'); }
       if(s.openSide) s.openSide(false);
+      if(s.hold) s.hold.classList.remove('on');
       if(!s.audio)continue;
       s.audio.pause();
       s.playing=false;
