@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
 <meta name="referrer" content="no-referrer">
-<meta name="build" content="202610080237">
+<meta name="build" content="202610080243">
 <title>Stationhead replay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -382,12 +382,17 @@ function sidePanel(d){
   // empty panel. The copy is the slow part, so the two roll out separately.
   if(!d.claim) return '';
   const hasBuy = !!(d.purchases && d.purchases.perSec);
-  const unit = hasBuy ? 'albums bought<br>since she started' : 'messages<br>in this clip';
+  // A voice note has no show and no chat of its own, so it counts the thing it
+  // actually reaches: everyone on the channel who can be played it.
+  const isNote = d.kind==='note';
+  const unit = isNote ? 'members on the channel<br>any host can play it to'
+             : hasBuy ? 'albums bought<br>since she started'
+                      : 'messages<br>in this clip';
   return `<div class="side" data-side>
     <div class="phase" data-phase>${esc(d.phaseStart||'Before it starts')}</div>
     <div class="claim">${d.claim||esc(d.title)}</div>
     ${d.sub?`<div class="sub">${d.sub}</div>`:''}
-    <div class="readout"><div class="big" data-big>0</div>
+    <div class="readout"><div class="big" data-big>${isNote?num(d.channel.members||0):'0'}</div>
       <div class="unit">${unit}</div></div>
     ${d.arc?`<div class="chartwrap">
       <div class="clab"><span>${esc(d.arc.unit||'Messages')} per ${d.arc.step} seconds</span><span>whole show</span></div>
@@ -617,11 +622,31 @@ class Slide{
         </div>
         <i class="dwell" data-dwell></i>
       </div>
-    </div></div>`;
+      <div class="hold" data-hold><div class="holdbtns">
+        <button data-resume><span>&#9654;</span><em>Resume</em></button>
+        <button data-again><span>&#8635;</span><em>Again</em></button>
+      </div></div>
+    </div>${sidePanel(d)}</div>`;
     this.fit=this.el.querySelector('.fit');
     this.nowEl=this.el.querySelector('[data-now]');
     this.gate=this.el.querySelector('[data-gate]');
     this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
+    this.lv={side:this.el.querySelector('[data-side]'),
+             phase:this.el.querySelector('[data-phase]')};
+    this.hold=this.el.querySelector('[data-hold]');
+    const nph=this.el.querySelector('.ph');
+    if(nph) nph.addEventListener('click',e=>{
+      if(this.gate && this.gate.style.display!=='none') return;
+      if(e.target.closest('[data-hold] button')) return;
+      this.playing ? this.holdOn() : this.holdOff();
+    });
+    if(this.hold){
+      this.hold.querySelector('[data-resume]').addEventListener('click',()=>this.holdOff());
+      this.hold.querySelector('[data-again]').addEventListener('click',()=>{
+        if(this.hold) this.hold.classList.remove('on');
+        this.audio.currentTime=0; this.play();
+      });
+    }
     this.audio=new Audio(d.audio); this.audio.preload='auto';
     this.audio.addEventListener('timeupdate',()=>this.tickNote());
     this.audio.addEventListener('ended',()=>{
@@ -634,6 +659,7 @@ class Slide{
 
   tickNote(){
     const d=this.d, el=this.audio.currentTime;
+    if(this.lv&&this.lv.phase&&d.phaseLive&&el>0.4) this.lv.phase.textContent=d.phaseLive;
     if(el>d.dur/1000){ this.pause(); if(App.slides[App.cur]===this) App.ended(this); return; }
     const wv=this.nowEl.querySelector('[data-wv]'), vt=this.nowEl.querySelector('[data-vt]');
     if(wv) wv.innerHTML=this.wave(el/(d.dur/1000));
@@ -649,6 +675,7 @@ class Slide{
       const w=Math.max(4, Math.min(100, Math.round(rate/d.peak*100)));
       if(w!==this._mw){ this._mw=w; this.lv.meter.style.width=w+'%'; }
     }
+    if(d.kind==='note') return;          // its number does not climb
     const hasBuy=!!(d.purchases&&d.purchases.perSec);
     let v=i;
     if(hasBuy){ v=0; for(const [t,n] of d.purchases.perSec) if(t<=el) v+=n; }
