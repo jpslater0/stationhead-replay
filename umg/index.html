@@ -152,20 +152,46 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 
 /* The numbers have to move. A static card tells a label the show was big; a
    counter climbing while they watch tells them why. */
-/* Sits in the slack under the channel logo, clear of the real header and the
-   composer, so the app's own chrome stays intact. */
-.live{position:absolute;left:0;right:0;top:62px;z-index:7;display:flex;
- justify-content:center;gap:7px;pointer-events:none}
-.live>div{background:rgba(0,0,0,.42);backdrop-filter:blur(7px);border-radius:11px;
- padding:5px 11px 6px;text-align:center;min-width:62px;
- border:1px solid rgba(255,255,255,.12)}
-.live b{display:block;font-size:17px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;
- line-height:1.15}
-.live span{font-size:8px;letter-spacing:.8px;text-transform:uppercase;
- color:rgba(255,255,255,.75);font-weight:600;white-space:nowrap}
-.live b.hit{animation:pop .45s ease-out}
-@keyframes pop{0%{transform:scale(1.5);color:var(--ring1)}100%{transform:scale(1);color:#fff}}
-.live .buy b{color:#ffd76b}
+/* Three layers, in order of loudness.
+   1. A hairline meter that is always alive but never asks for attention.
+   2. A quiet line of totals.
+   3. One gold card that arrives only when the first album sells, and a chip for
+      every sale after it. The sales are the story, so the sales get the drama. */
+.live{position:absolute;left:0;right:0;top:0;z-index:7;pointer-events:none}
+.meter{height:3px;background:rgba(255,255,255,.14);overflow:hidden}
+.meter i{display:block;height:100%;width:0;border-radius:0 2px 2px 0;
+ background:linear-gradient(90deg,var(--ring1),#fff);
+ box-shadow:0 0 10px 1px rgba(255,255,255,.5);transition:width .22s ease-out}
+.statrow{display:flex;align-items:flex-start;justify-content:space-between;
+ padding:60px 13px 0;gap:10px}   /* clears the channel header and the Threads pill */
+.mini{font-size:10.5px;font-weight:600;letter-spacing:.3px;color:rgba(255,255,255,.82);
+ background:rgba(0,0,0,.4);backdrop-filter:blur(7px);border-radius:9px;padding:5px 9px;
+ border:1px solid rgba(255,255,255,.1);white-space:nowrap}
+.mini b{font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.mult{opacity:0;transform:translateY(-6px) scale(.9);transition:opacity .4s,transform .4s;
+ background:linear-gradient(145deg,rgba(255,196,60,.22),rgba(0,0,0,.52));
+ border:1px solid rgba(255,214,110,.5);border-radius:12px;padding:5px 11px 7px;text-align:right;
+ box-shadow:0 5px 22px rgba(0,0,0,.42)}
+.mult.on{opacity:1;transform:none}
+.mult b{display:block;font-size:25px;font-weight:800;line-height:1;color:#ffd76b;
+ font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(255,200,80,.6)}
+.mult em{display:block;font-style:normal;font-size:8px;letter-spacing:.75px;
+ text-transform:uppercase;color:rgba(255,230,170,.9);font-weight:700;margin-top:3px}
+.mult b.hit{animation:mpop .5s cubic-bezier(.2,1.5,.4,1)}
+@keyframes mpop{0%{transform:scale(1.45)}100%{transform:scale(1)}}
+/* one chip per album sold, so a sale is an event you see land */
+.chips{position:absolute;right:14px;bottom:188px;z-index:8;width:92px;height:190px;
+ pointer-events:none;overflow:hidden}
+.chips i{position:absolute;right:0;bottom:0;font-style:normal;font-size:11px;font-weight:800;
+ color:#1a1206;background:linear-gradient(145deg,#ffe49a,#ffc23c);
+ border-radius:999px;padding:3px 9px;white-space:nowrap;
+ box-shadow:0 3px 14px rgba(255,180,40,.5);animation:chip 2.1s ease-out forwards}
+@keyframes chip{
+  0%{transform:translateY(14px) scale(.6);opacity:0}
+  14%{transform:translateY(0) scale(1);opacity:1}
+  70%{opacity:1}
+  100%{transform:translateY(-120px) scale(.95);opacity:0}}
+
 /* the quiet before, compressed: a label would not sit through eight real minutes */
 .pre{position:absolute;inset:0;z-index:12;background:var(--bg);color:#fff;
  display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
@@ -388,10 +414,15 @@ class Slide{
         </div>
       </div>
       <div class="live" data-live>
-        <div><b data-lv="msgs">0</b><span>messages</span></div>
-        <div><b data-lv="people">0</b><span>people</span></div>
-        ${d.purchases?`<div class="buy"><b data-lv="buys">0</b><span>${esc(d.purchases.label)}</span></div>`:''}
+        <div class="meter"><i data-meter></i></div>
+        <div class="statrow">
+          <div class="mini"><b data-lv="msgs">0</b> msgs &middot; <b data-lv="people">0</b> here</div>
+          ${d.purchases?`<div class="mult" data-mult>
+            <b data-mx>0&times;</b><em>${esc(d.purchases.multLabel||'vs before she spoke')}</em>
+          </div>`:''}
+        </div>
       </div>
+      ${d.purchases?'<div class="chips" data-chips></div>':''}
       ${d.preroll?`<div class="pre" data-pre>
         <div class="pn" data-pn>0</div>
         <div class="pl">${esc(d.preroll.note)}</div>
@@ -429,7 +460,10 @@ class Slide{
     this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
     this.lv={msgs:this.el.querySelector('[data-lv=msgs]'),
              people:this.el.querySelector('[data-lv=people]'),
-             buys:this.el.querySelector('[data-lv=buys]')};
+             meter:this.el.querySelector('[data-meter]'),
+             mult:this.el.querySelector('[data-mult]'),
+             mx:this.el.querySelector('[data-mx]'),
+             chips:this.el.querySelector('[data-chips]')};
     this.capEl=this.el.querySelector('[data-cap]');
     this.preEl=this.el.querySelector('[data-pre]');
     this.seen=new Set(); this.buys=0; this.capAt=-1;
@@ -531,10 +565,9 @@ class Slide{
   }
 
   /* Counters that climb while it plays. People is distinct senders so far, not a
-     total: it should rise as new names appear, the way the room fills up. */
-  meters(i, el){
+     total: it should rise as new names appear, the way the show fills up. */
+  meters(i, el, rate){
     const d=this.d; if(!this.lv||!this.lv.msgs)return;
-    for(let k=this.seen.size?0:0,n=i;k<n;k++){}        // cheap: recount only on change
     if(i!==this._lastI){
       this._lastI=i;
       this.seen.clear();
@@ -542,9 +575,26 @@ class Slide{
       this.bump(this.lv.msgs, i);
       this.bump(this.lv.people, this.seen.size);
     }
+    // the meter rides chat velocity against this clip's own busiest second
+    if(this.lv.meter && d.peak){
+      const w=Math.max(4, Math.min(100, Math.round(rate/d.peak*100)));
+      if(w!==this._mw){ this._mw=w; this.lv.meter.style.width=w+'%'; }
+    }
     if(d.purchases){
       let b=0; for(const [t,n] of d.purchases.perSec){ if(t<=el) b+=n; }
-      if(b!==this.buys){ this.buys=b; this.bump(this.lv.buys, b, true); }
+      if(b!==this.buys){
+        const added=b-this.buys; this.buys=b;
+        for(let k=0;k<Math.min(added,4);k++) this.chip();
+        // a rate, against what this channel was doing before the artist spoke
+        const base=(d.purchases.baseline&&d.purchases.baseline.perMin)||0;
+        if(base>0 && el>4 && this.lv.mx){
+          const x=(b/(el/60))/base;
+          this.lv.mx.textContent=(x<10?x.toFixed(1):Math.round(x))+'\u00d7';
+          this.lv.mx.classList.remove('hit'); void this.lv.mx.offsetWidth;
+          this.lv.mx.classList.add('hit');
+          if(this.lv.mult) this.lv.mult.classList.add('on');
+        }
+      }
     }
     if(d.transcript && this.capEl){
       let j=-1; for(let k=0;k<d.transcript.length;k++) if(d.transcript[k][0]<=el) j=k;
@@ -554,6 +604,15 @@ class Slide{
         this.capEl.classList.toggle('on', j>=0);
       }
     }
+  }
+  chip(){
+    if(!this.lv.chips)return;
+    const c=document.createElement('i');
+    c.textContent='+1 album';
+    c.style.bottom=(Math.random()*18)+'px';
+    c.style.right=(Math.random()*16)+'px';
+    this.lv.chips.appendChild(c);
+    setTimeout(()=>c.remove(), 2200);
   }
   bump(el, v, always){
     if(!el)return;
@@ -628,7 +687,7 @@ class Slide{
     this.cnt.textContent=i>999?(i/1000).toFixed(1)+'K':i;
     if(App.slides[App.cur]===this)App.hud(c,el,d);
 
-    this.meters(i, el);
+    this.meters(i, el, c);
 
     const at=this.talking(el);
     if(at>=0&&!this.mic)this.setMic(true,at);
