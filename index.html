@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
 <meta name="referrer" content="no-referrer">
+<meta name="build" content="202610080210">
 <title>Stationhead replay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +16,34 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 #feed{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth}
 #feed::-webkit-scrollbar{display:none}
 .slide{height:100vh;scroll-snap-align:start;display:grid;place-items:center;position:relative}
-.fit{transform-origin:center center}
+.fit{transform-origin:center center;display:flex;align-items:center;gap:30px}
+/* The argument sits beside the room, not on top of it. Below 980px there is no
+   space for both, so the panel steps aside and the room plays on its own. */
+.side{width:430px;flex:0 0 auto;display:flex;flex-direction:column;gap:14px;color:#fff}
+.side.off{display:none}
+.phase{font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;font-weight:700;
+ color:rgba(255,255,255,.5)}
+.claim{font-size:28px;font-weight:800;letter-spacing:-.7px;line-height:1.12}
+.claim em{font-style:normal;color:#ffd76b}
+.sub{font-size:13.5px;color:rgba(255,255,255,.62);line-height:1.5;margin-top:-5px}
+.readout{display:flex;align-items:baseline;gap:12px}
+.readout .big{font-size:58px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums;
+ color:#ffd76b;text-shadow:0 0 36px rgba(255,200,80,.32)}
+.readout .unit{font-size:12.5px;color:rgba(255,255,255,.66);font-weight:600;line-height:1.3}
+.chartwrap{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);
+ border-radius:14px;padding:13px 14px 10px}
+.clab{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.9px;
+ text-transform:uppercase;color:rgba(255,255,255,.5);font-weight:700;margin-bottom:9px}
+.chart{position:relative;height:92px;display:flex;align-items:flex-end;gap:1.3px}
+.chart b{flex:1;background:rgba(255,255,255,.17);border-radius:1.5px 1.5px 0 0;min-height:1.5px;
+ transition:background .25s}
+.chart b.lit{background:linear-gradient(180deg,#ffe49a,#ffb224);
+ box-shadow:0 0 8px rgba(255,180,40,.45)}
+.chart b.past{background:rgba(255,255,255,.3)}
+.chart .head{position:absolute;top:-5px;bottom:-3px;width:2px;background:#fff;
+ box-shadow:0 0 11px 2px rgba(255,255,255,.6)}
+.cfoot{display:flex;justify-content:space-between;font-size:10px;
+ color:rgba(255,255,255,.44);margin-top:7px}
 
 /* ---------- phone ---------- */
 .ph{width:460px;height:898px;border-radius:38px;overflow:hidden;position:relative;
@@ -162,23 +190,8 @@ body{font-family:Inter,system-ui,sans-serif;background:#0d0b0e;color:#fff;overfl
 .meter i{display:block;height:100%;width:0;border-radius:0 2px 2px 0;
  background:linear-gradient(90deg,var(--ring1),#fff);
  box-shadow:0 0 10px 1px rgba(255,255,255,.5);transition:width .22s ease-out}
-.statrow{display:flex;align-items:flex-start;justify-content:space-between;
- padding:60px 13px 0;gap:10px}   /* clears the channel header and the Threads pill */
-.mini{font-size:10.5px;font-weight:600;letter-spacing:.3px;color:rgba(255,255,255,.82);
- background:rgba(0,0,0,.4);backdrop-filter:blur(7px);border-radius:9px;padding:5px 9px;
- border:1px solid rgba(255,255,255,.1);white-space:nowrap}
-.mini b{font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
-.mult{opacity:0;transform:translateY(-6px) scale(.9);transition:opacity .4s,transform .4s;
- background:linear-gradient(145deg,rgba(255,196,60,.22),rgba(0,0,0,.52));
- border:1px solid rgba(255,214,110,.5);border-radius:12px;padding:5px 11px 7px;text-align:right;
- box-shadow:0 5px 22px rgba(0,0,0,.42)}
-.mult.on{opacity:1;transform:none}
-.mult b{display:block;font-size:25px;font-weight:800;line-height:1;color:#ffd76b;
- font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(255,200,80,.6)}
-.mult em{display:block;font-style:normal;font-size:8px;letter-spacing:.75px;
- text-transform:uppercase;color:rgba(255,230,170,.9);font-weight:700;margin-top:3px}
-.mult b.hit{animation:mpop .5s cubic-bezier(.2,1.5,.4,1)}
-@keyframes mpop{0%{transform:scale(1.45)}100%{transform:scale(1)}}
+@keyframes mpop{0%{transform:scale(1.4)}100%{transform:scale(1)}}
+.readout .big.hit{animation:mpop .5s cubic-bezier(.2,1.5,.4,1)}
 /* one chip per album sold, so a sale is an event you see land */
 .chips{position:absolute;right:14px;bottom:188px;z-index:8;width:92px;height:190px;
  pointer-events:none;overflow:hidden}
@@ -341,6 +354,28 @@ function gateHead(d){
   return `<div class="gtop">${body}<div class="gtag">${esc(c.tag)}${members}</div></div>${faces}`;
 }
 
+/* The argument beside the room. A moment only claims what its own data supports:
+   albums where there are albums, messages everywhere else. */
+function sidePanel(d){
+  // A moment without a written claim shows the room on its own rather than an
+  // empty panel. The copy is the slow part, so the two roll out separately.
+  if(!d.claim) return '';
+  const hasBuy = !!(d.purchases && d.purchases.perSec);
+  const unit = hasBuy ? 'albums bought<br>since she started' : 'messages<br>in this clip';
+  return `<div class="side" data-side>
+    <div class="phase" data-phase>${esc(d.phaseStart||'Before it starts')}</div>
+    <div class="claim">${d.claim||esc(d.title)}</div>
+    ${d.sub?`<div class="sub">${d.sub}</div>`:''}
+    <div class="readout"><div class="big" data-big>0</div>
+      <div class="unit">${unit}</div></div>
+    ${d.arc?`<div class="chartwrap">
+      <div class="clab"><span>${esc(d.arc.unit||'Messages')} per ${d.arc.step} seconds</span><span>whole show</span></div>
+      <div class="chart" data-chart><div class="head" data-head></div></div>
+      <div class="cfoot"><span>show starts</span><span data-cmid>this clip</span><span>${Math.round(d.arc.msgs[d.arc.msgs.length-1][0]/60)} min in</span></div>
+    </div>`:''}
+  </div>`;
+}
+
 const DWELL=2900;   // how long an intro card holds before the clip starts
 
 /* ---------- one slide ---------- */
@@ -413,16 +448,7 @@ class Slide{
           <div class="cb">&#43;</div><div class="cb">&#128717;</div><div class="cb">&#128156;</div>
         </div>
       </div>
-      <div class="live" data-live>
-        <div class="meter"><i data-meter></i></div>
-        <div class="statrow">
-          <div class="mini"><b data-lv="msgs">0</b> msgs &middot; <b data-lv="people">0</b> here</div>
-          ${d.purchases?`<div class="mult" data-mult>
-            <b data-mx>0&times;</b><em>${esc(d.purchases.multLabel||'vs before she spoke')}</em>
-          </div>`:''}
-        </div>
-      </div>
-      ${d.purchases?'<div class="chips" data-chips></div>':''}
+      <div class="live" data-live><div class="meter"><i data-meter></i></div></div>
       ${d.preroll?`<div class="pre" data-pre>
         <div class="pn" data-pn>0</div>
         <div class="pl">${esc(d.preroll.note)}</div>
@@ -449,7 +475,7 @@ class Slide{
         </div>
         <i class="dwell" data-dwell></i>
       </div>
-    </div></div>`;
+    </div>${sidePanel(d)}</div>`;
 
     this.fit=this.el.querySelector('.fit');
     this.box=this.el.querySelector('[data-chat]');
@@ -458,12 +484,27 @@ class Slide{
     this.heartsEl=this.el.querySelector('[data-hearts]');
     this.gate=this.el.querySelector('[data-gate]');
     this.gate.addEventListener('click',()=>{App.unlock();this.begin(0);});
-    this.lv={msgs:this.el.querySelector('[data-lv=msgs]'),
-             people:this.el.querySelector('[data-lv=people]'),
-             meter:this.el.querySelector('[data-meter]'),
-             mult:this.el.querySelector('[data-mult]'),
-             mx:this.el.querySelector('[data-mx]'),
-             chips:this.el.querySelector('[data-chips]')};
+    this.lv={meter:this.el.querySelector('[data-meter]'),
+             chips:this.el.querySelector('[data-chips]'),
+             big:this.el.querySelector('[data-big]'),
+             phase:this.el.querySelector('[data-phase]'),
+             chart:this.el.querySelector('[data-chart]'),
+             head:this.el.querySelector('[data-head]'),
+             side:this.el.querySelector('[data-side]')};
+    this.bars=[];
+    if(this.lv.chart && d.arc){
+      const mx=Math.max(...d.arc.msgs.map(p=>p[1]))||1;
+      for(const [sec,n] of d.arc.msgs){
+        const b=document.createElement('b');
+        b.style.height=Math.max(1.5,(n/mx)*92)+'px'; b.dataset.sec=sec;
+        this.lv.chart.appendChild(b); this.bars.push(b);
+      }
+      this.arcFirst=d.arc.msgs[0][0];
+      this.arcSpan=d.arc.msgs[d.arc.msgs.length-1][0]-this.arcFirst || 1;
+      const mid=this.el.querySelector('[data-cmid]');
+      if(mid) mid.textContent=Math.round(d.start/60000)+' min in';
+      this.markHead(d.start/1000);
+    }
     this.capEl=this.el.querySelector('[data-cap]');
     this.preEl=this.el.querySelector('[data-pre]');
     this.seen=new Set(); this.buys=0; this.capAt=-1;
@@ -567,42 +608,36 @@ class Slide{
   /* Counters that climb while it plays. People is distinct senders so far, not a
      total: it should rise as new names appear, the way the show fills up. */
   meters(i, el, rate){
-    const d=this.d; if(!this.lv||!this.lv.msgs)return;
-    if(i!==this._lastI){
-      this._lastI=i;
-      this.seen.clear();
-      for(let k=0;k<i;k++) this.seen.add(d.msgs[k][1]);
-      this.bump(this.lv.msgs, i);
-      this.bump(this.lv.people, this.seen.size);
-    }
-    // the meter rides chat velocity against this clip's own busiest second
+    const d=this.d; if(!this.lv)return;
     if(this.lv.meter && d.peak){
       const w=Math.max(4, Math.min(100, Math.round(rate/d.peak*100)));
       if(w!==this._mw){ this._mw=w; this.lv.meter.style.width=w+'%'; }
     }
-    if(d.purchases){
-      let b=0; for(const [t,n] of d.purchases.perSec){ if(t<=el) b+=n; }
-      if(b!==this.buys){
-        const added=b-this.buys; this.buys=b;
-        for(let k=0;k<Math.min(added,4);k++) this.chip();
-        // a rate, against what this channel was doing before the artist spoke
-        const base=(d.purchases.baseline&&d.purchases.baseline.perMin)||0;
-        if(base>0 && el>4 && this.lv.mx){
-          const x=(b/(el/60))/base;
-          this.lv.mx.textContent=(x<10?x.toFixed(1):Math.round(x))+'\u00d7';
-          this.lv.mx.classList.remove('hit'); void this.lv.mx.offsetWidth;
-          this.lv.mx.classList.add('hit');
-          if(this.lv.mult) this.lv.mult.classList.add('on');
+    const hasBuy=!!(d.purchases&&d.purchases.perSec);
+    let v=i;
+    if(hasBuy){ v=0; for(const [t,n] of d.purchases.perSec) if(t<=el) v+=n; }
+    if(v!==this._bigV){
+      const was=this._bigV; this._bigV=v;
+      if(this.lv.big){
+        this.lv.big.textContent = v>999 ? (v/1000).toFixed(1)+'K' : v;
+        if(hasBuy && was!==undefined){
+          this.lv.big.classList.remove('hit'); void this.lv.big.offsetWidth;
+          this.lv.big.classList.add('hit');
+          for(let k=0;k<Math.min(v-was,4);k++) this.chip();
         }
       }
     }
-    if(d.transcript && this.capEl){
-      let j=-1; for(let k=0;k<d.transcript.length;k++) if(d.transcript[k][0]<=el) j=k;
-      if(j!==this.capAt){
-        this.capAt=j;
-        this.capEl.textContent = j>=0 ? d.transcript[j][1] : '';
-        this.capEl.classList.toggle('on', j>=0);
-      }
+    if(this.bars.length) this.markHead(d.start/1000 + el);
+    if(this.lv.phase && d.phaseLive && el>1.5) this.lv.phase.textContent=d.phaseLive;
+  }
+  markHead(sec){
+    if(!this.lv.head)return;
+    const p=Math.max(0,Math.min(1,(sec-this.arcFirst)/this.arcSpan));
+    this.lv.head.style.left=(p*100)+'%';
+    for(const b of this.bars){
+      const s=+b.dataset.sec, inClip = s>=this.d.start/1000 && s<=(this.d.start+this.d.dur)/1000;
+      b.classList.toggle('lit', s<=sec && inClip);
+      b.classList.toggle('past', s<=sec && !inClip);
     }
   }
   chip(){
@@ -623,7 +658,11 @@ class Slide{
 
   scale(){
     if(!this.fit)return;
-    const k=Math.min(1,(innerHeight-40)/898,(innerWidth-32)/460);
+    const has = !!(this.lv && this.lv.side);
+    const wide = has && innerWidth >= 980;
+    if(has) this.lv.side.classList.toggle('off', !wide);
+    const w = wide ? 460+30+430 : 460;
+    const k = Math.min(1,(innerHeight-40)/898,(innerWidth-32)/w);
     this.fit.style.transform=`scale(${k})`;
   }
 
@@ -675,6 +714,7 @@ class Slide{
     if(el<0){this.seek(d.start/1000);return;}
     if(el>d.dur/1000){
       this.pause();
+      if(this.lv&&this.lv.phase&&this.d.phaseEnd) this.lv.phase.textContent=this.d.phaseEnd;
       if(App.slides[App.cur]===this) App.ended(this);
       return;
     }
