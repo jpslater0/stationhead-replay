@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stationhead replay</title>
+<style>
+  :root{--bg:#0d0b0e;--fg:#fff;--dim:rgba(255,255,255,.6)}
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#faf8fb;--fg:#17141a;--dim:rgba(0,0,0,.55)}}
+  :root[data-theme="dark"]{--bg:#0d0b0e;--fg:#fff;--dim:rgba(255,255,255,.6)}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);display:grid;place-items:center;
+       font:15px/1.6 Inter,system-ui,sans-serif;padding:0 16px;text-align:center}
+  a{color:inherit}
+  .d{color:var(--dim);font-size:13.5px;margin-top:10px}
+</style>
+<script>
+  // This reel moved from /stationhead-replay/ to /replay/. Links already sent to
+  // partners land here, so the path and any ?v= stamp are carried straight over.
+  (function(){
+    var p = location.pathname.replace(/^\/stationhead-replay\/?/, '');
+    location.replace('/replay/' + p + location.search + location.hash);
+  })();
+</script>
+</head><body>
+<div><b>Taking you to the replay</b>
+<div class="d">This moved to <a href="/replay/">jpslater0.github.io/replay</a></div></div>
+</body></html>
