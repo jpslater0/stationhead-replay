@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stationhead replay</title>
+<link rel="canonical" href="https://replay.stationhead.com/">
 <style>
   :root{--bg:#0d0b0e;--fg:#fff;--dim:rgba(255,255,255,.6)}
   @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#faf8fb;--fg:#17141a;--dim:rgba(0,0,0,.55)}}
@@ -13,14 +14,17 @@
   .d{color:var(--dim);font-size:13.5px;margin-top:10px}
 </style>
 <script>
-  // This reel moved from /stationhead-replay/ to /replay/. Links already sent to
-  // partners land here, so the path and any ?v= stamp are carried straight over.
+  // These reels now live on replay.stationhead.com. Links already sent to partners
+  // land here, so the path and any ?v= stamp are carried straight over. This used
+  // to hand off to /replay/ on the same host, which then took a second redirect
+  // out to the real domain; going direct saves partners two hops, one of them
+  // over plain http.
   (function(){
     var p = location.pathname.replace(/^\/stationhead-replay\/?/, '');
-    location.replace('/replay/' + p + location.search + location.hash);
+    location.replace('https://replay.stationhead.com/' + p + location.search + location.hash);
   })();
 </script>
 </head><body>
 <div><b>Taking you to the replay</b>
-<div class="d">This moved to <a href="/replay/">jpslater0.github.io/replay</a></div></div>
+<div class="d">This moved to <a href="https://replay.stationhead.com/">replay.stationhead.com</a></div></div>
 </body></html>
